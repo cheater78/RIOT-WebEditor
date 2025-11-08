@@ -1,0 +1,8 @@
+bind-addr: 0.0.0.0:8080
+auth: password
+hashed-password: "$argon2i$v=19$m=4096,t=3,p=1$N0wwZFhVNzZQNjRWSjRPWHBBUmpuUT09$w+w+k7CR7sc/FqiNNhR6gqMHd1FhdgYMmqAp77XZriY"
+cert: false
+app-name: "RIOT WebEditor"
+disable-telemetry: true
+user-data-dir: .local/share/code-server
+extensions-dir: .local/share/code-server/extensions
