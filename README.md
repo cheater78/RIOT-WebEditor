@@ -1,7 +1,13 @@
+[RIOT-OS]: https://github.com/RIOT-OS/RIOT
+[RIOT-WEB]: https://github.com/cheater78/RIOT-WEB
 [coder/code-server]: https://github.com/coder/code-server
+[RIOT-WEB-FLASH-EXT-PROTOTYPE]: https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE
 
-# RIOT-OS Web Editor
-Project for the RIOT-OS Web Editor, based on [coder/code-server][coder/code-server] (VSCode style Editor)
+# [RIOT-OS][RIOT-OS] Web Editor
+Project for the RIOT-OS Web Editor, uses:
+- [coder/code-server][coder/code-server] (VSCode style Editor)
+- [RIOT-OS fork][RIOT-WEB]
+- [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
 ## Config [code-server][coder/code-server]
 The code-server config file is located at [config/code-server.conf.yaml](config/code-server.conf.yaml)
 ### set password hash (argon2)
@@ -69,7 +75,7 @@ Project log for what was done, when, why and what went wrong
     - WebSerial does not allow device access in non secure (non HTTPS) remote sessions
         - FIX: HTTPS terminating reverse Proxy, also for multi container management
 ### Week 04
-1. TODO: query progess on [RIOT-WEB-FLASH-EXT-PROTOTYPE](https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE)
+1. TODO: query progess on [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
     - ask that other guy
 2. Reworked Dockerfile to use base Dockerfile [riot/riotbuild:latest](https://github.com/RIOT-OS/riotdocker)
     - alr contains necessary buildtools
