@@ -10,7 +10,6 @@ ARG USERID="1000"
 ARG GROUPID="1000"
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV SHELL=/bin/bash
 
 # System setup
 USER root
@@ -27,15 +26,17 @@ RUN apt-get install -y make gcc-multilib python3-serial python3-psutil wget unzi
 # Node.js and npm install for extension building
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 RUN apt-get install -y nodejs
+RUN npm install -g @vscode/vsce typescript
 # Dev TODO~
 
 # User setup
 EXPOSE 8080
 USER $USERNAME
 ENV HOME=/home/$USERNAME
-ENV XDG_DATA_HOME=$HOME/.local/share
-ENV XDG_CONFIG_HOME=$HOME/.config
+ENV SHELL=/bin/bash
 WORKDIR $HOME
+ENV XDG_DATA_HOME=/home/$USERNAME/.local/share
+ENV XDG_CONFIG_HOME=/home/$USERNAME/.config
 
 COPY --chown=$USERID:$GROUPID \
     ./config/code-server.conf.yaml \
@@ -43,16 +44,17 @@ COPY --chown=$USERID:$GROUPID \
 COPY --chown=$USERID:$GROUPID \
     ./config/default-vscode-user-settings.json \
     /home/$USERNAME/.local/share/code-server/User/settings.json
-COPY --chown=$USERID:$GROUPID \
-    ./extensions \
-    /home/$USERNAME/.local/share/code-server/extensions
 
 # Dev TODO: remove for dist ()
-RUN cd /home/$USERNAME/.local/share/code-server/extensions/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
-    npm install && npm run compile-web
+RUN git clone https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE.git --recursive /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
+    cd /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
+    npm install && vsce package
+RUN cd /home/$USERNAME && \
+    code-server --install-extension /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE/riot-web-extension-0.0.1.vsix
 # Dev TODO~
 
 RUN git clone https://github.com/cheater78/RIOT-WEB.git --recursive /home/$USERNAME/RIOT
 
 # Container startup command
+ENTRYPOINT []
 CMD ["code-server"]

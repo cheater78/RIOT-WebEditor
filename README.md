@@ -77,15 +77,20 @@ Project log for what was done, when, why and what went wrong
 ### Week 04
 1. TODO: query progess on [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
     - ask that other guy
-2. Reworked Dockerfile to use base Dockerfile [riot/riotbuild:latest](https://github.com/RIOT-OS/riotdocker)
-    - alr contains necessary buildtools
-    - more lightweight compiler setup
-    - created docker.sh (-b for build, -s to start) for quicker setup
+2. Created this repo
+3. Reworked Dockerfile
+    - now uses base Dockerfile [riot/riotbuild:latest](https://github.com/RIOT-OS/riotdocker)
+        - alr contains necessary buildtools
+        - more lightweight compiler setup
+    - created docker.sh (-b for build, -s to start, -d to debug) for quicker setup
         - image name: riot-dev-env
         - container name: riot-dev-con
         - access port: 80 (mapped to code-servers 8080)
-3. TODO: forked RIOT for web intergration in make system + git and subs
-    - gotta start doin that
-4. Future considerations:
+    - clones current [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE] and installs it
+        - also provides tools(npm, vsce) to theoretically reload live(code-server --install-extension /path)
+    - clones current [RIOT-OS][RIOT-WEB] fork
+4. [RIOT-OS][RIOT-WEB] fork
+    - TODO: touch make system without going crazy - alr failed
+5. Future considerations:
     - reverse proxy and docker container management tool: [Treafik](https://github.com/traefik/traefik) (under MIT license)
     - or look into [coder](https://github.com/coder/coder)

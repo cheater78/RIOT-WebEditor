@@ -3,6 +3,7 @@
 # build: docker.sh -b
 # run: docker.sh -s
 
+DEBUG=${DEBUG:-false}
 BUILD=${BUILD:-false}
 RUN=${RUN:-false}
 
@@ -16,6 +17,10 @@ while [[ $# -gt 0 ]]; do
 			RUN=true
 			shift
 			;;
+		-d|--debug)
+			DEBUG=true
+			shift
+			;;
 		*)
 			echo "Unknown option: $1"
 			echo "Try '$0 --help' for more information."
@@ -26,7 +31,11 @@ done
 
 if [[ $BUILD == true ]]; then
 	echo "Building Docker Img: riot-dev-env"
-	docker build -t riot-dev-env .
+	DEBUG_ARG=""
+	if [[ $DEBUG == true ]]; then
+		DEBUG_ARG="--progress=plain --no-cache"
+	fi
+	docker build ${DEBUG_ARG} -t riot-dev-env .
 fi
 
 if [[ $RUN == true ]]; then
