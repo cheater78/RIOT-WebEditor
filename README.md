@@ -91,6 +91,7 @@ Project log for what was done, when, why and what went wrong
     - clones current [RIOT-OS][RIOT-WEB] fork
 4. [RIOT-OS][RIOT-WEB] fork
     - TODO: touch make system without going crazy - alr failed
+    - found smth at: makefiles/tools/esptool.inc.mk (now search usage)
 5. Future considerations:
     - reverse proxy and docker container management tool: [Treafik](https://github.com/traefik/traefik) (under MIT license)
     - or look into [coder](https://github.com/coder/coder)
