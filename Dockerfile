@@ -53,6 +53,8 @@ RUN cd /home/$USERNAME && \
     code-server --install-extension /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE/riot-web-extension-0.0.1.vsix
 # Dev TODO~
 
+# Preinstall RIOT (TODO: exactly figure out where and how)
+ENV RIOT_FLASH_WEB=1
 RUN git clone https://github.com/cheater78/RIOT-WEB.git --recursive /home/$USERNAME/RIOT
 
 # Container startup command
