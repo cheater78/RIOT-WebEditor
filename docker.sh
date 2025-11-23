@@ -47,5 +47,5 @@ if [[ $RUN == true ]]; then
 	fi
 
 	echo "Starting Docker Container: riot-dev-con"
-	docker run -d --name $CONTAINER_NAME -p 80:8080 riot-dev-env
+	docker run -d --name $CONTAINER_NAME -p 80:8080 -v "./extensions:/home/coder/extensions" riot-dev-env
 fi

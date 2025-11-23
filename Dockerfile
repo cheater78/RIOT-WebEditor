@@ -24,9 +24,9 @@ RUN apt-get install -y make gcc-multilib python3-serial python3-psutil wget unzi
 
 # Dev TODO: remove for dist
 # Node.js and npm install for extension building
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 RUN apt-get install -y nodejs
-RUN npm install -g @vscode/vsce typescript
+RUN npm install -g typescript npm@latest @vscode/vsce
 # Dev TODO~
 
 # User setup
@@ -46,11 +46,14 @@ COPY --chown=$USERID:$GROUPID \
     /home/$USERNAME/.local/share/code-server/User/settings.json
 
 # Dev TODO: remove for dist ()
-RUN git clone https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE.git --recursive /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
-    cd /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
-    npm install && vsce package
-RUN cd /home/$USERNAME && \
-    code-server --install-extension /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE/riot-web-extension-0.0.1.vsix
+#RUN git clone https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE.git --recursive /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
+#    cd /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE && \
+#    npm install && npm run compile-web
+# RUN cd /home/$USERNAME && code-server --install-extension /home/$USERNAME/RIOT-WEB-FLASH-EXT-PROTOTYPE/riot-web-extension-0.0.1.vsix
+# COPY --chown=$USERID:$GROUPID \
+#    ./extensions/RIOT-WEB-FLASH-EXT-PROTOTYPE/riot-web-extension-0.0.1.vsix
+#    /home/$USERNAME/riot-web-extension-0.0.1.vsix
+# RUN cd /home/$USERNAME && code-server --install-extension /home/$USERNAME/riot-web-extension-0.0.1.vsix
 # Dev TODO~
 
 # Preinstall RIOT (TODO: exactly figure out where and how)
