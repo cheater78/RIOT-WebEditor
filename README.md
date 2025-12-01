@@ -75,8 +75,11 @@ Project log for what was done, when, why and what went wrong
     - WebSerial does not allow device access in non secure (non HTTPS) remote sessions
         - FIX: HTTPS terminating reverse Proxy, also for multi container management
 ### Week 04
-1. TODO: query progess on [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
-    - ask that other guy
+1. [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
+    - prettyfied Serial / Flasher Terminal
+        - use of a WebView for maximum customizability
+    - weird fix for ListView buttons
+        - check for ListItemContext in a List -> offers base for multiple device buttons
 2. Created this repo
 3. Reworked Dockerfile
     - now uses base Dockerfile [riot/riotbuild:latest](https://github.com/RIOT-OS/riotdocker)
