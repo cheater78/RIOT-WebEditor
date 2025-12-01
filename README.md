@@ -1,5 +1,6 @@
 [RIOT-OS]: https://github.com/RIOT-OS/RIOT
 [RIOT-WEB]: https://github.com/cheater78/RIOT-WEB
+[RIOT-WebEditor]: https://github.com/cheater78/RIOT-WebEditor
 [coder/code-server]: https://github.com/coder/code-server
 [RIOT-WEB-FLASH-EXT-PROTOTYPE]: https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE
 
@@ -118,3 +119,26 @@ Project log for what was done, when, why and what went wrong
 4. Architecture Considerations
     - DeviceList
         - active project per device -> more common to flash one project to multiple devices
+### Week 06
+1. [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
+    - enumerated devices
+    - added info as tree children
+    - baudrate as user input
+    - addictional UI prettification
+2. WebSockets
+    - added commandSocket to extension
+    - requirement for a ws relay to be always available
+        - main extension host (doesnt work) or detached process
+3. ExtensionHost news
+    - Main OR Web Extension host
+    - when main and browser defined in package.json
+        - main always takes precidence over browser
+        - no hybrid extensions
+    - the web extension will only be shipped with the [RIOT-WebEditor][RIOT-WebEditor] project
+        - since using Websockets there is no use for the Web Extension without the backend
+4. Exploring Makefile System integration
+    - already using RIOT/makefiles/tools/programmer.inc.mk
+    - considering USE_PROGRAMMER_WRAPPER_SCRIPT
+        - appears to only add a pretty spinner and a background process
+        - no use for us
+
