@@ -98,3 +98,23 @@ Project log for what was done, when, why and what went wrong
 5. Future considerations:
     - reverse proxy and docker container management tool: [Treafik](https://github.com/traefik/traefik) (under MIT license)
     - or look into [coder](https://github.com/coder/coder)
+### Week 05
+1. [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
+    - fixed Serial / Flasher Terminal
+        - WebView broke when moving around(effectively reloading it)
+    - major refactor, abstractions
+        - Device management
+    - multiple failed experiments in regards of terminal hijacking
+2. Build System considerations
+    - make target is upposed to work independently
+        - keep make system as central part
+    - any buttons for a friendlier user expericence just call make
+        - make system then defers its calls when in a web environment
+3. Make system changes ([RIOT-Web][RIOT-WEB] fork)
+    - global env var in Dockerfile: RIOT_WEB_FLASH=1
+    - integration in RIOT/makefiles/tools/programmer.inc.mk
+    - call of export scripts to create ./bin/<board_name>/flasher_args.json
+    - plan to use as signal and cosume flasher_args.json
+4. Architecture Considerations
+    - DeviceList
+        - active project per device -> more common to flash one project to multiple devices
