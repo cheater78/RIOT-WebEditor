@@ -1,0 +1,7 @@
+#!/bin/bash
+rm -rf /home/coder/.local/share/code-server/extensions/*
+RIOT_WEB_RUNTIME_RIOT_WEB_EXTENSION_PACKAGE="${RIOT_WEB_RUNTIME_RIOT_WEB_EXTENSION_DIRECTORY}/riot-web-extension-0.0.1.vsix"
+[[ -f ${RIOT_WEB_RUNTIME_RIOT_WEB_EXTENSION_PACKAGE} ]] && code-server --install-extension "${RIOT_WEB_RUNTIME_RIOT_WEB_EXTENSION_PACKAGE}"
+
+python3 "${RIOT_WEB_RUNTIME_WEBSOCKET_SCRIPT_WS_RELAY}" 5107 "${RIOT_WEB_RUNTIME_WEBSOCKET_BACKSOCKET}" &
+code-server

@@ -141,4 +141,43 @@ Project log for what was done, when, why and what went wrong
     - considering USE_PROGRAMMER_WRAPPER_SCRIPT
         - appears to only add a pretty spinner and a background process
         - no use for us
-
+# Week 07
+1. WebSockets
+    - websocketd with looping bash script relay to named pipe
+        - requires separate pipes for rd and wr
+    - websocat bridge to unix socket
+        - better but we also need remote make calls
+    - detached python process -> TODO
+        - websocket for frontend
+        - unix socket for redirected make calls
+        - shell command execution for remote calls
+            - web extensions support vscode.Tasks only -> no dynamic args / fixed package-time-defined commands only
+2. The Merge
+    - first plans with Max for sharing resources and frontend UI code the:
+        - RIOT VSCode Extension
+        - RIOT VSCode Web Extension
+    - Goal: have the same / as similar as possible userexperience on both frontends
+3. Makesystem Integration
+    - remove [RIOT-WEB][RIOT-WEB]
+    - patch a normal [RIOT-OS][RIOT-OS] clone on docker img build
+# Week 08
+1. ShellWrapper
+    - planning ShellWrapper structure
+    - idea:
+        - run a custom ShellWrapper as default Shell
+        - allows to intercept and react to any user shell input
+        - allows for injection of responses from button actions and webclient tasks
+        - websocket as sidechannel to run non typed cmds, display webclient task output, ...
+    - multiple Shells = ShellWrapper can be instantiated
+        - keep one WebSocket
+        - requires ID and routing
+            - WebSocket Server / Router
+            - ShellWrappers that connect to it
+            - ONE single front end that connects
+    - created diegrams for two scenarios:
+        - web ui button press triggert flash / term
+        - shell cmd triggered flash / term
+2. UI concepts
+    - planning of Device UI (as Core Panel)
+    - diagrams for Device UI
+    - built mokups on separate branches
