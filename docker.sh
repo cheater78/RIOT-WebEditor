@@ -4,8 +4,18 @@
 # run: docker.sh -s
 
 DEBUG=${DEBUG:-false}
+UPDATE=${UPDATE:-false}
 BUILD=${BUILD:-false}
 RUN=${RUN:-false}
+
+# Static config
+DOCKER_IMAGE_NAME="riot-dev-env"
+DOCKER_CONTAINER_NAME_BASE="riot-dev-con"
+
+# project root
+PREV_DIR=$(pwd)
+PROJECT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+cd "${PROJECT_DIR}"
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -21,6 +31,10 @@ while [[ $# -gt 0 ]]; do
 			DEBUG=true
 			shift
 			;;
+		-u|--update)
+			UPDATE=true
+			shift
+			;;
 		*)
 			echo "Unknown option: $1"
 			echo "Try '$0 --help' for more information."
@@ -29,23 +43,42 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+run_silent() {
+	if [[ $DEBUG != true ]]; then
+		$@ > /dev/null
+	else
+		$@
+	fi
+}
+
+
 if [[ $BUILD == true ]]; then
-	echo "Building Docker Img: riot-dev-env"
+	# Build extension
+	if [[ $UPDATE == true ]]; then
+		run_silent git submodule update --init
+	fi
+	cd "${PROJECT_DIR}/extensions/RIOT-WEB-FLASH-EXT-PROTOTYPE"
+	run_silent npm install
+	run_silent npm run compile-web
+	run_silent npm run package
+	cd "${PROJECT_DIR}"
+
 	DEBUG_ARG=""
 	if [[ $DEBUG == true ]]; then
 		DEBUG_ARG="--progress=plain --no-cache"
 	fi
-	docker build ${DEBUG_ARG} -t riot-dev-env .
+	run_silent docker build ${DEBUG_ARG} -t ${DOCKER_IMAGE_NAME} .
 fi
 
 if [[ $RUN == true ]]; then
-	CONTAINER_NAME="riot-dev-con"
-	
-	if [ "$(docker ps -a -q -f name=^/${CONTAINER_NAME}$)" ]; then
-		echo "Container '${CONTAINER_NAME}' exists. Removing..."
-		docker rm -f "${CONTAINER_NAME}"
+	if [ "$(docker ps -a -q -f name=^/${DOCKER_CONTAINER_NAME_BASE}$)" ]; then
+		echo "Container '${DOCKER_CONTAINER_NAME_BASE}' exists. Removing..."
+		docker rm -f "${DOCKER_CONTAINER_NAME_BASE}"
 	fi
 
 	echo "Starting Docker Container: riot-dev-con"
-	docker run -d --name $CONTAINER_NAME -p 80:8080 -v "./extensions:/home/coder/extensions" riot-dev-env
+	docker run -d --name $DOCKER_CONTAINER_NAME_BASE -p 80:8080 -p 5107:5107 -v "./extensions:/home/coder/.riot-web/extensions" "${DOCKER_IMAGE_NAME}"
 fi
+
+# reset to caller directory
+cd "${PREV_DIR}"
