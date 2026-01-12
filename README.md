@@ -181,3 +181,17 @@ Project log for what was done, when, why and what went wrong
     - planning of Device UI (as Core Panel)
     - diagrams for Device UI
     - built mokups on separate branches
+# Week 09
+1. Backend and Communication
+    - implemented crude WebSocket relay
+        - considers first message per client as their ID (must be number)
+        - forwards all incoming messages to cid=0 -> thought to be the client
+    - implemented ShellProxy
+        - presents an interactive Shell (currently bash)
+        - opens a WebSocket on startup
+        - executes every message sent by WS in the shell, like user input
+        - quick WS write test, frontend can recieve responses from backend ws clients(ShellWrapper)
+2. Frontend
+    - implemented UI according to sketches
+    - removed custom term (big sad)
+    - considering WebTransport(or WebSocketStream) instead of WebSocket
