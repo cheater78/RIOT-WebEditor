@@ -195,3 +195,5 @@ Project log for what was done, when, why and what went wrong
     - implemented UI according to sketches
     - removed custom term (big sad)
     - considering WebTransport(or WebSocketStream) instead of WebSocket
+# Week 10
+1. Protocol design
