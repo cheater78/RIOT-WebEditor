@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+import asyncio
+
+import log
+from async_remote_socket_server import SocketMessageType, AsyncWebSocketServer
+import protocol
+from protocol_message_types import *
+from protocol_field_types import AddressType, Address
+
+class AsyncProtocolRemoteSocketRelay:
+    RemoteSocketServer = AsyncWebSocketServer
+    ServerConnectionHandle = RemoteSocketServer.ConnectionHandle
+
+    socket_server: RemoteSocketServer
+    sockets_by_id: dict[int, ServerConnectionHandle] = {}
+
+    def __init__(self) -> None:
+        self.event_loop = asyncio.new_event_loop()
+        self.socket_server = AsyncProtocolRemoteSocketRelay.RemoteSocketServer(self.__on_connection_opened__,
+                                                                             self.__on_connection_closed__,
+                                                                             self.__on_message__,
+                                                                             event_loop=self.event_loop)
+    
+    def write(self, message: ProtocolLinkMessage) -> None:
+        self.write_to(message.reciever, message)
+    
+    def write_to_client(self, message: ProtocolMessage) -> None:
+        self.write_to(Address(AddressType.CLIENT, 0), message)
+
+    def write_to(self, to:Address, message: ProtocolMessage) -> None:
+        encoded: SocketMessageType = protocol.encode(message)
+        match to.type:
+            case AddressType.CLIENT | AddressType.DEVICE:
+                reciever_id: int = 0
+            case AddressType.SHELL:
+                reciever_id: int = to.value
+        if not reciever_id in self.sockets_by_id.keys():
+            log.error(f"AsyncProtocolRemoteSocketRelay.write_to: ID {reciever_id} has no associated socket!")
+            # TODO: queuueeuing system
+            return
+        self.socket_server.write(self.sockets_by_id[reciever_id], encoded)
+
+    def run(self) -> None:
+        log.info(">Starting event loop...")
+        self.event_loop.run_forever()
+
+    def __get_registered_by_id__(self, peer_id: int) -> ServerConnectionHandle | None:
+        return self.sockets_by_id.get(peer_id, None)
+    
+    def __get_registered_by_handle__(self, socket_handle: ServerConnectionHandle) -> int | None:
+        for peer_id, handle in self.sockets_by_id.items():
+            if handle.id == socket_handle.id:
+                return peer_id
+        return None
+
+    def __register_socket__(self, socket_handle: ServerConnectionHandle, peer_id: int) -> None:
+        if peer_id in self.sockets_by_id.keys():
+            log.warn(f"AsyncProtocolRemoteSocketRelay.__register_socket__: ID is already registered {peer_id}! Overriding...")
+            del self.sockets_by_id[peer_id]
+
+        # Check if already connected -> replace the old connection
+        if ambiguous_id:= self.__get_registered_by_handle__(socket_handle):
+            log.warn(f"AsyncProtocolRemoteSocketRelay.__register_socket__: SocketHandle is already registered under ID {ambiguous_id}! Overriding...")
+            del self.sockets_by_id[ambiguous_id]
+        
+        # register new connection
+        self.sockets_by_id[peer_id] = socket_handle
+
+    def __unregister_socket__(self, id: int) -> None:
+        if id in self.sockets_by_id:
+            del self.sockets_by_id[id]
+            log.info(f"AsyncProtocolRemoteSocketRelay.__unregister_socket__: Unregistered ID {id}")
+        else:
+            log.warn(f"AsyncProtocolRemoteSocketRelay.__unregister_socket__: ID {id} was not registered!")
+
+    def __on_connection_opened__(self, socket_handle: ServerConnectionHandle) -> None:
+        log.info(f"AsyncProtocolRemoteSocketRelay: New connection opened")
+
+    def __on_connection_closed__(self, socket_handle: ServerConnectionHandle) -> None:
+        log.info(f"AsyncProtocolRemoteSocketRelay: Connection closed")
+        if registered_id:= self.__get_registered_by_handle__(socket_handle):
+            log.info(f"AsyncProtocolRemoteSocketRelay.__on_connection_closed__: Unregistering SocketHandle from ID {registered_id}")
+            self.__unregister_socket__(registered_id)
+        else:
+            log.warn(f"AsyncProtocolRemoteSocketRelay.__on_connection_closed__: SocketHandle was not registered!")
+    
+    def __on_message__(self, socket_handle: ServerConnectionHandle, message: SocketMessageType) -> None:
+        log.info(f"AsyncProtocolRemoteSocketRelay: Message recieved from : {message}")
+        
+        decoded_message = protocol.decode(message)
+        if decoded_message is None:
+            log.error(f"AsyncProtocolRemoteSocketRelay: Failed to decode message from : {message}")
+            return
+        
+        match decoded_message:
+            case ProtocolLinkMessage() as link_message:
+                # TODO: drop device-device and shell-shell messages
+
+                message_type: MessageType = link_message.type
+                if link_message.reciever.type == AddressType.DEVICE or link_message.reciever.type == AddressType.CLIENT:
+                    reciever_id: int = 0
+                else:
+                    reciever_id: int = link_message.reciever.value
+
+                if not reciever_id in self.sockets_by_id.keys():
+                    if message_type == MessageType.LTM:
+                        log.info(f"AsyncProtocolRemoteSocketRelay: Reciever ID {reciever_id} has no associated connection! Dropping LTM!")
+                        return
+                    log.warn(f"AsyncProtocolRemoteSocketRelay: Reciever ID {reciever_id} has no associated connection! Returning LTM!")
+                    self.write_to(link_message.sender,
+                                  MessageLinkTermination(
+                                    sender=link_message.reciever,
+                                    reciever=link_message.sender,
+                                    log_type=LogType.ERROR,
+                                    log_msg=f"Reciever ID {reciever_id} of type {link_message.reciever.type} has no established connection!"
+                    ))
+                    return
+                log.info(f"AsyncProtocolRemoteSocketRelay: Relaying LinkMessage from {link_message.sender} to {link_message.reciever}")
+                self.write(link_message)
+            case MessageConnect() as connect_message:
+                log.info(f"AsyncProtocolRemoteSocketRelay: Handling MessageConnect from {connect_message.peer_id}")
+                self.__on_message_connect__(socket_handle, connect_message)
+            case MessageDisconnect() as disconnect_message:
+                log.info(f"AsyncProtocolRemoteSocketRelay: Handling MessageDisconnect from {self.__get_registered_by_handle__(socket_handle)}")
+                self.__on_message_disconnect__(socket_handle, disconnect_message)
+            case MessageDNRRequest() as dnr_request_message:
+                log.info(f"AsyncProtocolRemoteSocketRelay: Relaying MessageDNRRequest from {self.__get_registered_by_handle__(socket_handle)} to Client")
+                self.write_to_client(dnr_request_message)
+            case _ as drop_message:
+                self.__on_message_drop__(socket_handle, drop_message)
+    
+    def __on_message_connect__(self, socket_handle: ServerConnectionHandle, connect_message: MessageConnect) -> None:
+        peer_address: Address = connect_message.peer_id
+        if peer_address.type == AddressType.DEVICE: # Only Shells and one Client allowed to connect
+            log.error(f"AsyncRemoteSocketServer.mark_connected: Recieved MessageConnect from Device! - Devices should not open connections!")
+            return
+        
+        self.__register_socket__(socket_handle, connect_message.peer_id.value)
+        # send ack
+        self.write_to(peer_address, MessageConnectAck())
+        log.info(f"AsyncProtocolRemoteSocketRelay.__on_message_connect__: Registered SocketHandle as connected under ID {connect_message.peer_id.value}")
+    
+    def __on_message_disconnect__(self, socket_handle: ServerConnectionHandle, disconnect_message: MessageDisconnect) -> None:
+        if registered_id:= self.__get_registered_by_handle__(socket_handle):
+            log.info(f"AsyncProtocolRemoteSocketRelay.__on_message_disconnect__: Unregistering SocketHandle from ID {registered_id}")
+            self.__unregister_socket__(registered_id)
+        else:
+            log.warn(f"AsyncProtocolRemoteSocketRelay.__on_message_disconnect__: SocketHandle was not registered!")
+
+    def __on_message_drop__(self, socket_handle: ServerConnectionHandle, drop_message: ProtocolMessage) -> None:
+        log.warn(f"AsyncProtocolRemoteSocketRelay.__on_message_drop__: Dropping unhandled message from : {drop_message}")
+        
+
+
+
+relay = AsyncProtocolRemoteSocketRelay()
+relay.run()
