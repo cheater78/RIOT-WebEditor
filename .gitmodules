@@ -1,3 +1,3 @@
-[submodule "extensions/RIOT-WEB-FLASH-EXT-PROTOTYPE"]
-	path = extensions/RIOT-WEB-FLASH-EXT-PROTOTYPE
-	url = https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE.git
+[submodule "extensions/RIOT-VS-Code-Extension"]
+	path = extensions/RIOT-VS-Code-Extension
+	url = https://github.com/Barkolores/RIOT-VS-Code-Extension.git
