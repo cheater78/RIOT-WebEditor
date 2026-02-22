@@ -7,6 +7,7 @@ DEBUG=${DEBUG:-false}
 UPDATE=${UPDATE:-false}
 BUILD=${BUILD:-false}
 RUN=${RUN:-false}
+SKIP_NPM=${SKIP_NPM:-false}
 
 # Static config
 DOCKER_IMAGE_NAME="riot-dev-env"
@@ -35,9 +36,12 @@ while [[ $# -gt 0 ]]; do
 			UPDATE=true
 			shift
 			;;
+		-n|--no-pkg-build)
+			SKIP_NPM=true
+			shift
+			;;
 		*)
 			echo "Unknown option: $1"
-			echo "Try '$0 --help' for more information."
 			exit 1
 			;;
 	esac
@@ -51,17 +55,23 @@ run_silent() {
 	fi
 }
 
-
 if [[ $BUILD == true ]]; then
 	# Build extension
 	if [[ $UPDATE == true ]]; then
 		run_silent git submodule update --init
 	fi
-	cd "${PROJECT_DIR}/extensions/RIOT-WEB-FLASH-EXT-PROTOTYPE"
-	run_silent npm install
-	run_silent npm run compile-web
-	run_silent npm run package
-	cd "${PROJECT_DIR}"
+	
+	if [[ $SKIP_NPM == false ]]; then
+		cd "${PROJECT_DIR}/extensions/RIOT-VS-Code-Extension/extensions/web"
+		if [[ $UPDATE == true ]]; then
+			run_silent git stash
+			run_silent git pull
+		fi
+		run_silent npm install
+		run_silent npm run compile-web
+		run_silent npm run package
+		cd "${PROJECT_DIR}"
+	fi
 
 	DEBUG_ARG=""
 	if [[ $DEBUG == true ]]; then
@@ -77,7 +87,7 @@ if [[ $RUN == true ]]; then
 	fi
 
 	echo "Starting Docker Container: riot-dev-con"
-	docker run -d --name $DOCKER_CONTAINER_NAME_BASE -p 80:8080 -p 5107:5107 -v "./extensions:/home/coder/.riot-web/extensions" "${DOCKER_IMAGE_NAME}"
+	docker run -d --name $DOCKER_CONTAINER_NAME_BASE -p 80:8080 -p 7777:7777 "${DOCKER_IMAGE_NAME}"
 fi
 
 # reset to caller directory

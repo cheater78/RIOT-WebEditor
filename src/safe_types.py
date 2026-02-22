@@ -6,6 +6,13 @@ def is_list(data: Any) -> bool:
 def is_str(data: Any) -> bool:
     return isinstance(data, str)
 
+def str_is_int(data: str) -> bool:
+    try:
+        int(data)
+        return True
+    except:
+        return False
+
 def to_bytes(data: bytes | str) -> bytes:
     match data:
         case str():

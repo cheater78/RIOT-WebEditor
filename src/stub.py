@@ -1,181 +1,217 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 from abc import abstractmethod
 import argparse
 import asyncio
-from enum import Enum
+from enum import StrEnum
 import os
-from typing import Any
+from typing import Any, Optional
 
-import log, protocol
-from file_descriptor_io import STDIO, MultiplexIO
-from protocol_message_types import *
+from safe_types import to_bytes, str_is_int
+from tty_io import TTYRawIO, TTYActionRaw
+from protocol_fd_io import ProtocolMUXFDIO
+from protocol_message import *
+
+class CommandType(StrEnum):
+    NONE = ""
+    FLASH = "flash"
+    TERM = "term"
+
+    @staticmethod
+    def decode(data: str) -> CommandType:
+        try:
+            return CommandType(data)
+        except:
+            return CommandType.NONE
 
 class CommandArgParser:
     parser: argparse.ArgumentParser
-    parsed: bool = False
     args: Any
     
-    def __init__(self) -> None:
-        self.parser = argparse.ArgumentParser(description=f"trigger and handle a riot web command")
-        self.parser.add_argument("command", type=str, help="the riot web command to run")
+    def __init__(self, other: Optional[CommandArgParser] = None) -> None:
+        if not other:
+            self.parser = argparse.ArgumentParser(description=f"trigger and handle a riot web command")
+            self.parser.add_argument("command", type=str, help="the riot web command to run")
+            self.parser.add_argument("port", type=str, help="port / device to flash to.")
+            self.parser.add_argument("board", type=str, help="target board to build for.")
 
-        self.parsed = False
-
-    def parse(self) -> None:
-        self.args = self.parser.parse_args()
-        self.parsed = True
-
-    def __parse_once__(self) -> None:
-        if not self.parsed:
-            self.parse()
+            self.args, _ = self.parser.parse_known_args()
+        else:
+            self.parser = other.parser
+            self.args = other.args
 
     def command(self) -> CommandType:
-        self.__parse_once__()
         command_str: str = self.args.command
         return CommandType.decode(command_str)
-
-class CommandHandler:
-    event_loop: asyncio.AbstractEventLoop
-    stdio: STDIO
-    stdio_multiplex: MultiplexIO
-    stdio_multiplex_protocol_channel: int = 1
-
-    p_shell_id: int
-    protocol_Address_me: Address
-
-    def __init__(self, event_loop: asyncio.AbstractEventLoop) -> None:
-        self.event_loop = event_loop
-
-        self.stdio = STDIO(self.__on_raw_stdin__, self.event_loop)
-        self.stdio_multiplex = MultiplexIO(self.stdio)
-        self.stdio_multiplex.setChannelCallbackFunction(self.stdio_multiplex_protocol_channel, self.__on_raw_protocol_in__)
-
-        env = os.environ.copy()
-        self.p_shell_id = int(env["RIOT_WEB_SHELL_ID"])
-        self.protocol_Address_me = Address(AddressType.SHELL, self.p_shell_id)
-
-    @abstractmethod 
-    def run(self) -> None:
-        self.event_loop.run_forever()
-
-    def write(self, message: ProtocolMessage) -> None:
-        raw: bytes = protocol.encode(message)
-        self.stdio_multiplex.write_channel(self.stdio_multiplex_protocol_channel, raw)
-
-    def __on_raw_protocol_in__(self, message: bytes) -> None:
-        unsafe_message: ProtocolMessage | None = protocol.decode(message)
-        if not unsafe_message:
-            log.error(f"CommandHandler.__on_raw_protocol_in__: Message could not be decoded!")
-            return
-        self.__on_protocol_in__(unsafe_message)
-
-    @abstractmethod
-    def __on_raw_stdin__(self, message: bytes) -> None:
-        pass
-
-    @abstractmethod
-    def __on_protocol_in__(self, message: ProtocolMessage) -> None:
-        pass
-
-class FlashCommandArgParser(CommandArgParser):
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.parser.add_argument("programmer", type=str, help="programmer / flasher that would be used locally.")
-        self.parser.add_argument("board", type=str, help="target board to build for.")
-        self.parser.add_argument("port", type=str, help="port / device to flash to.")
-
-        self.parser.add_argument("bootloader_pos", type=str, help="offset to the bootloader.")
-        self.parser.add_argument("bootloader_bin", type=str, help="binary of the bootloader.")
-        self.parser.add_argument("partitions_pos", type=str, help="offset to partitions.")
-        self.parser.add_argument("partitions_bin", type=str, help="binary of partitions.")
-        self.parser.add_argument("flashfile_pos", type=str, help="offset to the flashfile.")
-        self.parser.add_argument("flashfile_bin", type=str, help="binaryof the flashfile.")
-
-        self.parser.add_argument("fflags", type=str, help="All Flasher args that would be used locally.")
     
-    def programmer(self) -> str:
-        self.__parse_once__()
-        return self.args.programmer
-    
-    def board(self) -> str:
-        self.__parse_once__()
-        return self.args.board
-
     def port(self) -> str:
-        self.__parse_once__()
         return self.args.port
     
+    def board(self) -> str:
+        return self.args.board
+
+class CommandHandler:
+    _event_loop: asyncio.AbstractEventLoop
+    _p_shell_id: int
+
+    _arg_parser: CommandArgParser
+
+    _ttyio: TTYRawIO
+    _std_protocol_io: ProtocolMUXFDIO
+    _protocol_me: Address
+
+    _device_name: str
+    _device_resolved: bool
+    _device: Address
+
+    def __init__(self, arg_parser: CommandArgParser, event_loop: asyncio.AbstractEventLoop) -> None:
+        self._event_loop = event_loop
+        self._p_shell_id = self.__query_web_shell_id__()
+        self._arg_parser = arg_parser
+
+        self._ttyio = TTYRawIO(
+            self.__on_raw_stdin__,
+            self._on_tty_windowresize_,
+            event_loop=self._event_loop)
+        self._std_protocol_io = ProtocolMUXFDIO(
+            self._ttyio, 
+            self.__on_protocol_in__)
+        self._protocol_me = Address(AddressType.SHELL, self._p_shell_id)
+        
+        self._device_resolved = str_is_int(self._arg_parser.port())
+        self._device_name = self._arg_parser.port() if not self._device_resolved else ""
+        self._device = Address(AddressType.DEVICE, int(self._arg_parser.port()) if self._device_resolved else -1)
+
+    def _stop_(self) -> None:
+        self._event_loop.stop()
+
+    def _send_ltm_(self, termination_type: TerminationType, msg: str) -> None:
+        ltm: MessageLinkTermination = MessageLinkTermination(self._protocol_me, self._device, termination_type, msg)
+        self._std_protocol_io.write(ltm)
+
+    @abstractmethod
+    def _on_raw_stdin_(self, message: bytes) -> None:
+        pass
+
+    @abstractmethod
+    def _on_protocol_in_(self, message: ProtocolMessage) -> None:
+        pass
+
+    @abstractmethod
+    def _on_link_established_(self) -> None:
+        pass
+
+    @abstractmethod
+    def _on_tty_windowresize_(self, rows: int, cols: int) -> None:
+        pass
+    
+    def run(self) -> None:
+        if not self._device_resolved:
+            self.__send_dnr__()
+        else:
+            self._on_link_established_()
+        
+        self._event_loop.run_forever()
+        self._ttyio.close()
+
+    def __send_dnr__(self) -> None:
+        dnr = MessageDNRRequest(
+                self._protocol_me,
+                self._device_name
+            )
+        self._std_protocol_io.write(dnr)
+
+    def __on_raw_stdin__(self, message: bytes) -> None:
+        if bytes(TTYActionRaw.CANCEL) == message:
+            self._send_ltm_(TerminationType.ERROR, "Action interrupted by user!")
+            self._stop_()
+            return
+        self._on_raw_stdin_(message)
+    
+    def __on_protocol_in__(self, message: ProtocolMessage) -> None:
+        match message:
+            case MessageDNRAck() as dnr_ack:
+                if self._device_resolved:
+                    log.warn(f"Unexpected DNRAck received!")
+                    return
+                self._device = dnr_ack.sender
+                self._device_resolved = True
+                self._on_link_established_()
+            case MessageLinkTermination() as ltm:
+                if ltm.termination_type == TerminationType.SUCCESS:
+                    os.write(1, to_bytes(ltm.termination_message))
+                else:
+                    os.write(2, to_bytes(ltm.termination_message))
+                self._stop_()
+            case _:
+                self._on_protocol_in_(message)
+
+    @staticmethod
+    def __query_web_shell_id__() -> int:
+        unsafe_id_str: str | None = os.environ.get("RIOT_WEB_SHELL_ID")
+        if not unsafe_id_str:
+            log.error(f"RIOT_WEB_SHELL_ID was not found in the current environment! (FATAL)")
+            exit(1) #TODO: send LTM?
+        try:
+            return int(unsafe_id_str)
+        except:
+            log.error(f"RIOT_WEB_SHELL_ID was not an int! was:{unsafe_id_str} (FATAL)")
+            exit(1) #TODO: send LTM?
+
+class FlashCommandArgParser(CommandArgParser):
+    def __init__(self, other: Optional[CommandArgParser]) -> None:
+        super().__init__(other)
+        self.parser.add_argument("programmer", type=str, help="programmer / flasher that would be used locally.")
+        self.parser.add_argument("binaries", type=str, help="binaries with their offset.")
+        self.parser.add_argument("fflags", type=str, help="All Flasher args that would be used locally.")
+        
+        self.args, _ = self.parser.parse_known_args()
+    
+    def programmer(self) -> str:
+        return self.args.programmer
+    
     def fflags(self) -> str:
-        self.__parse_once__()
         return self.args.fflags
     
     def binaries(self) -> dict[int, str]:
-        self.__parse_once__()
-        return {
-            self.args.bootloader_pos: self.args.bootloader_bin,
-            self.args.partitions_pos: self.args.partitions_bin,
-            self.args.flashfile_pos: self.args.flashfile_bin,
-        }
+        # TODO: does this work? - cleanup
+        import json
+        def parse_map(value: str) -> dict[int, str]:
+            raw = json.loads(value)
+            return {int(k): str(v) for k, v in raw.items()}
+        return parse_map(self.args.binaries)
 
 class FlashCommandHandler(CommandHandler):
-
-    class Stage(Enum):
-        PRE_DNR = 0
-        DNR = 1
-        FLASHING = 2
-        SUCCESS = 3
-        ERROR = 4
-
-    arg_parser: FlashCommandArgParser
-    stage: Stage = Stage.PRE_DNR
-
-    def __init__(self, event_loop: asyncio.AbstractEventLoop) -> None:
-        super().__init__(event_loop)
-        self.arg_parser = FlashCommandArgParser()
-        self.stage = self.Stage.PRE_DNR
+    def __init__(self, arg_parser: CommandArgParser, event_loop: asyncio.AbstractEventLoop) -> None:
+        super().__init__(FlashCommandArgParser(arg_parser), event_loop)
 
     def run(self) -> None:
-        self.stage = self.Stage.DNR
-        dnr_message = MessageDNRRequest(
-            self.protocol_Address_me,
-            self.arg_parser.port()
-        )
-        self.write(dnr_message)
-
+        # TODO: needed?
         super().run()
 
-    def __on_raw_stdin__(self, message: bytes) -> None:
-        pass
+    def args(self) -> FlashCommandArgParser:
+        return self._arg_parser #type: ignore
 
-    def __on_protocol_in__(self, message: ProtocolMessage) -> None:
-        match message.type:
-            case MessageType.DNR_ACK:
-                if not isinstance(message, MessageDNRAck):
-                    log.error("Message of type DNR_ACK was not a MessageDNRAck!")
-                    return
-                if self.stage == self.Stage.DNR:
-                    binaries: dict[int, bytes] = { }
-                    for offset, path in self.arg_parser.binaries().items():
-                        with open(path, "rb") as f:
-                            binaries[offset] = f.read()
-                    
-                    flash_message: MessageFlash = MessageFlash(self.protocol_Address_me, message.sender, self.arg_parser.board(), binaries, self.arg_parser.fflags())
-                    self.write(flash_message)
-                    return
-                log.warn("received unexpected MessageDNRAck!")
-            case MessageType.LOG:
-                if not isinstance(message, MessageLog):
-                    log.error("Message of type LOG was not a MessageLog!")
-                    return
-                print(message.log_msg)
-                return
-            case MessageType.LTM:
-                if not isinstance(message, MessageLinkTermination):
-                    log.error("Message of type LTM was not a MessageLinkTermination!")
-                    return
-                self.stage = self.Stage.ERROR if message.log_type == LogType.ERROR else self.Stage.SUCCESS
-                self.event_loop.stop()
+    def _on_link_established_(self) -> None:
+        binaries: dict[int, bytes] = { }
+        for offset, path in self.args().binaries().items():
+            with open(path, "rb") as f:
+                binaries[offset] = f.read()
+        flash_message: MessageFlash = MessageFlash(
+            self._protocol_me,
+            self._device,
+            self.args().board(),
+            binaries,
+            self.args().fflags())
+        self._std_protocol_io.write(flash_message)
+
+    def _on_raw_stdin_(self, message: bytes) -> None:
+        pass # cancel only
+
+    def _on_protocol_in_(self, message: ProtocolMessage) -> None:
+        match message:
+            case MessageLog() as lm:
+                os.write(1, to_bytes(lm.log_msg))
                 return
             case _:
                 log.warn(f"received unexpected Message of type {str(message.type)}")
@@ -183,113 +219,98 @@ class FlashCommandHandler(CommandHandler):
 
 class TermCommandArgParser(CommandArgParser):
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.parser.add_argument("board", type=str, help="target board to build for.")
-        self.parser.add_argument("port", type=str, help="port / device to flash to.")
+    def __init__(self, other: Optional[CommandArgParser]) -> None:
+        super().__init__(other)
         self.parser.add_argument("baud", type=int, help="baud rate for the serial connection.")
-    
-    def baud(self) -> int:
-        self.__parse_once__()
-        return self.args.baud
-    
-    def board(self) -> str:
-        self.__parse_once__()
-        return self.args.board
+        
+        self.args, _ = self.parser.parse_known_args()
 
-    def port(self) -> str:
-        self.__parse_once__()
-        return self.args.port
+    def baud(self) -> int:
+        return self.args.baud
 
 class TermCommandHandler(CommandHandler):
+    user_input: str
 
-    class Stage(Enum):
-        PRE_DNR = 0
-        DNR = 1
-        TERM = 2
-        SUCCESS = 3
-        ERROR = 4
-
-    arg_parser: TermCommandArgParser
-    stage: Stage = Stage.PRE_DNR
-
-    def __init__(self, event_loop: asyncio.AbstractEventLoop) -> None:
-        super().__init__(event_loop)
-        self.arg_parser = TermCommandArgParser()
-        self.stage = self.Stage.PRE_DNR
+    def __init__(self, arg_parser: CommandArgParser, event_loop: asyncio.AbstractEventLoop) -> None:
+        super().__init__(TermCommandArgParser(arg_parser), event_loop)
+        self.user_input = ""
 
     def run(self) -> None:
-        self.stage = self.Stage.DNR
-        dnr_message = MessageDNRRequest(
-            self.protocol_Address_me,
-            self.arg_parser.port()
-        )
-        self.write(dnr_message)
-
+        # TODO: needed?
         super().run()
 
-    def __on_raw_stdin__(self, message: bytes) -> None:
-        pass
+    def args(self) -> TermCommandArgParser:
+        return self._arg_parser #type: ignore
 
-    def __on_protocol_in__(self, message: ProtocolMessage) -> None:
-        match message.type:
-            case MessageType.DNR_ACK:
-                if not isinstance(message, MessageDNRAck):
-                    log.error("Message of type DNR_ACK was not a MessageDNRAck!")
-                    return
-                if self.stage == self.Stage.DNR:
-                    term_message: MessageTerm = MessageTerm(self.protocol_Address_me, message.sender, self.arg_parser.board(), self.arg_parser.baud())
-                    self.write(term_message)
-                    return
-                log.warn("received unexpected MessageDNRAck!")
-            case MessageType.LOG:
-                if not isinstance(message, MessageLog):
-                    log.error("Message of type LOG was not a MessageLog!")
-                    return
-                log.info(message.log_msg)
+    def _stop_(self, success: bool = False, message: str = "Term was stopped!"):
+        self._send_ltm_(TerminationType.SUCCESS if success else TerminationType.ERROR, message)
+        super()._stop_()
+
+    def _on_raw_stdin_(self, message: bytes) -> None:
+        human_message: str = ""
+
+        def write() -> None:
+            if self.user_input != "":
+                self._std_protocol_io.write(MessageInput(self._protocol_me, self._device, self.user_input))
+                self.user_input = ""
+        
+        for b in message:
+            if chr(b).isprintable():
+                human_message += chr(b)
+                self._ttyio.write(f"{chr(b)}".encode())
+            else:
+                if f"{b}".encode() == TTYActionRaw.EOF:
+                    write()
+                    self._stop_(success=True, message="Term was ended by user input.")
+                elif f"{b}".encode() == TTYActionRaw.CANCEL:
+                    write()
+                    self._stop_(success=False, message="Term was killed by the user.")
+                elif chr(b) == "\r" or chr(b) == "\n":
+                    write() # human_message += chr(b) -> but tty is raw
+                else:
+                    print(f"[w] user entered a byte that wasnt human readable!\n\r")
                 return
-            case MessageType.LTM:
-                if not isinstance(message, MessageLinkTermination):
-                    log.error("Message of type LTM was not a MessageLinkTermination!")
-                    return
-                self.stage = self.Stage.ERROR if message.log_type == LogType.ERROR else self.Stage.SUCCESS
-                self.event_loop.stop()
+        
+        self.user_input += human_message
+        
+    def _on_link_established_(self) -> None:
+        term_message: MessageTerm = MessageTerm(
+            self._protocol_me,
+            self._device,
+            self.args().board(),
+            self.args().baud())
+        self._std_protocol_io.write(term_message)
+
+    def _on_protocol_in_(self, message: ProtocolMessage) -> None:
+        match message:
+            case MessageLog() as log:
+                print(log.log_msg) # TODO: type? - os.write?
                 return
             case _:
-                log.warn(f"received unexpected Message of type {str(message.type)}")
+                print(f"received unexpected Message of type {str(message.type)}")
                 pass
 
-class CommandType(Enum, str):
-    NONE = ""
-    FLASH = "flash"
-    TERM = "term"
 
-    def __new__(cls, type: str):
-        return super().__new__(cls, type)
-    
-    @staticmethod
-    def decode(data: str) -> CommandType:
-        try:
-            return CommandType(data)
-        except:
-            return CommandType.NONE
-    
-commands: dict[str, type[CommandHandler]] = {
+command_type_to_handler: dict[str, type[CommandHandler]] = {
     CommandType.FLASH: FlashCommandHandler,
     CommandType.TERM: TermCommandHandler,
 }
 
-def command_names() -> list[str]:
-    return list(commands.keys())
-
 def __main__() -> None:
     command_arg_parser: CommandArgParser = CommandArgParser()
+
     command_type: CommandType = command_arg_parser.command()
     if command_type == CommandType.NONE:
         log.error("Illegal or missing Command Type!")
         return
+    
+    command_handler_class: type[CommandHandler] | None = command_type_to_handler.get(command_type)
+    if not command_handler_class:
+        log.error("Specified CommandType did not have an associated CommandHandler!")
+        return
+    
     event_loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
-    command_handler: CommandHandler = commands[command_type](event_loop)
+    command_handler: CommandHandler = command_handler_class(command_arg_parser, event_loop)
     command_handler.run()
 
 __main__()

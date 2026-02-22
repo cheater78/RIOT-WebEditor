@@ -1,11 +1,12 @@
-
 # pyright: reportMissingTypeStubs=false
 import cbor2
+from typing import Callable
 
 import log
-from protocol_message_types import *
+from protocol_message import *
 
 SocketMessageType = bytes
+ProtocolCallbackFunc=Callable[[ProtocolMessage], None]
 
 def encode(message: ProtocolMessage) -> SocketMessageType:
         structured_message: list[Any] = message.encode()

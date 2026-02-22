@@ -1,72 +1,76 @@
 #!/usr/bin/env python3
 import log
 import protocol
-from protocol_message_types import *
+from protocol_message import *
+
+log.log_level=log.Level.INFO
+log.enable_asserts=True
+
+dummy_sender: Address = Address(AddressType.CLIENT, 0)
+dummy_receiver: Address = Address(AddressType.DEVICE, 42)
 
 dummy_messages: list[ProtocolMessage] = [
     MessageConnect(
-        Address(AddressType.CLIENT, 1)
+        dummy_sender
     ),
     MessageConnectAck(),
     MessageDisconnect(),
     MessageDNRRequest(
-        sender=Address(AddressType.CLIENT, 1),
+        sender=dummy_sender,
         device_name="MyDevice"
     ),
     MessageDNRAck(
-        sender=Address(AddressType.CLIENT, 1),
-        reciever=Address(AddressType.DEVICE, 42)
+        sender=dummy_sender,
+        reciever=dummy_receiver
     ),
     MessageShellRequest(
-        sender=Address(AddressType.CLIENT, 1),
-        reciever=Address(AddressType.SHELL, 42)
+        sender=dummy_sender,
+        reciever=dummy_receiver
     ),
     MessageShellRequestAck(
-        sender=Address(AddressType.SHELL, 42),
-        reciever=Address(AddressType.CLIENT, 1)
+        sender=dummy_receiver,
+        reciever=dummy_sender
     ),
     MessageLinkTermination(
-        sender=Address(AddressType.CLIENT, 1),
-        reciever=Address(AddressType.SHELL, 42),
-        log_type=LogType.ERROR,
-        log_msg="Test log message"
+        sender=dummy_sender,
+        reciever=dummy_receiver,
+        termination_type=TerminationType.ERROR,
+        termination_message="Test log message"
     ),
     MessageFlash(
-        sender=Address(AddressType.CLIENT, 1),
+        sender=dummy_sender,
         reciever=Address(AddressType.DEVICE, 42),
         board="esp32-wroom-32",
-        project_path="/path/to/project",
         binaries={0x00: b"\xDE\xAD\xBE\xEF"},
         args="--flash-args"
     ),
     MessageFlashRequest(
-        sender=Address(AddressType.CLIENT, 1),
+        sender=dummy_sender,
         reciever=Address(AddressType.DEVICE, 42),
         board="esp32-wroom-32",
         project_path="/path/to/project"
     ),
     MessageTerm(
-        sender=Address(AddressType.CLIENT, 1),
+        sender=dummy_sender,
         reciever=Address(AddressType.DEVICE, 42),
         board="esp32-wroom-32",
-        project_path="/path/to/project",
         baud_rate=115200
     ),
     MessageTermRequest(
-        sender=Address(AddressType.CLIENT, 1),
+        sender=dummy_sender,
         reciever=Address(AddressType.DEVICE, 42),
         board="esp32-wroom-32",
         project_path="/path/to/project"
     ),
     MessageLog(
-        sender=Address(AddressType.CLIENT, 1),
-        reciever=Address(AddressType.SHELL, 42),
+        sender=dummy_sender,
+        reciever=dummy_receiver,
         log_type=LogType.LOG,
         log_msg="This is a log message"
     ),
     MessageInput(
-        sender=Address(AddressType.CLIENT, 1),
-        reciever=Address(AddressType.SHELL, 42),
+        sender=dummy_sender,
+        reciever=dummy_receiver,
         input_msg="User input message"
     )
 ]

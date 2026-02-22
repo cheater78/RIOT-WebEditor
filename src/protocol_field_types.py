@@ -38,6 +38,9 @@ class MessageType(Enum):
         except:
             log.error(f"MessageType.decode: A non ValueError occured (very bad)! (was {str(data[0])})")
         return None
+    
+    def __str__(self) -> str:
+        return f"MessageType:{self.value}"
 
 class AddressType(Enum):
     SHELL = "shell"
@@ -62,6 +65,9 @@ class AddressType(Enum):
         except:
             log.error(f"AdressType.decode: A non ValueError occured (very bad)! (was {str(data[0])})")
         return None
+    
+    def __str__(self) -> str:
+        return f"AddressType:{self.value}"
 
 class Address():
     type: AddressType
@@ -93,10 +99,10 @@ class Address():
         # AdressValue at data[1] is valid
         return Address(unsafe_address_type, data[1])
     
-         
+    def __str__(self) -> str:
+        return f"Address(type:{self.type},value:{self.value})"
 
 class LogType(Enum):
-    SUCCESS = "success"
     ERROR = "error"
     LOG = "log"
 
@@ -109,3 +115,23 @@ class LogType(Enum):
             return LogType(data)
         except ValueError:
             return None
+    
+    def __str__(self) -> str:
+        return f"LogType:{self.value}"
+
+class TerminationType(Enum):
+    SUCCESS = "success"
+    ERROR = "error"
+
+    def encode(self) -> str:
+        return str(self.value)
+
+    @staticmethod
+    def decode(data: str) -> TerminationType | None:
+        try:
+            return TerminationType(data)
+        except ValueError:
+            return None
+    
+    def __str__(self) -> str:
+        return f"TerminationType:{self.value}"

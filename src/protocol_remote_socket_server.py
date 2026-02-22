@@ -7,7 +7,7 @@ import protocol
 from protocol_message import *
 from protocol_field_types import AddressType, Address
 
-class AsyncProtocolRemoteSocketRelay:
+class AsyncProtocolRemoteSocketServer:
     RemoteSocketServer = AsyncWebSocketServer
     ServerConnectionHandle = RemoteSocketServer.ConnectionHandle
 
@@ -18,7 +18,7 @@ class AsyncProtocolRemoteSocketRelay:
 
     def __init__(self) -> None:
         self.event_loop = asyncio.new_event_loop()
-        self.socket_server = AsyncProtocolRemoteSocketRelay.RemoteSocketServer(self.__on_connection_opened__,
+        self.socket_server = AsyncProtocolRemoteSocketServer.RemoteSocketServer(self.__on_connection_opened__,
                                                                              self.__on_connection_closed__,
                                                                              self.__on_message__,
                                                                              event_loop=self.event_loop)
@@ -147,8 +147,8 @@ class AsyncProtocolRemoteSocketRelay:
                             MessageLinkTermination(
                             sender=link_message.receiver,
                             reciever=link_message.sender,
-                            log_type=LogType.ERROR,
-                            log_msg=f"Reciever ID {reciever_id} of type {link_message.receiver.type} has no established connection!"
+                            termination_type=TerminationType.ERROR,
+                            termination_message=f"Reciever ID {reciever_id} of type {link_message.receiver.type} has no established connection!"
             ))
             return
         # ProtocolLinkMessage can be forwarded
@@ -179,11 +179,3 @@ class AsyncProtocolRemoteSocketRelay:
             self.__unregister_socket__(registered_id)
         else:
             log.warn(f"SocketHandle was not registered!")
-
-        
-        
-
-
-
-relay = AsyncProtocolRemoteSocketRelay()
-relay.run()

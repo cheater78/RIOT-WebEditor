@@ -1,4 +1,4 @@
-import os, time
+import os
 from enum import IntEnum
 from safe_types import to_bytes
 
@@ -23,7 +23,7 @@ class Level(IntEnum):
     INFO = 2
 
 log_level: Level = Level.INFO
-enable_asserts: bool = True # whether assert should stop execution(for 10y atm)
+enable_asserts: bool = True # whether assert should stop execution
 
 def __nl__(msg: bytes) -> bytes:
     return msg + (b"" if msg.endswith(b"\n\r") else b"     --NL\n\r")
@@ -59,7 +59,7 @@ def err_assert(condition: bool, log_msg: str | bytes) -> None:
         if not condition:
             error(log_msg)
             if enable_asserts:
-                time.sleep(3600 * 24 * 365 * 10)
+                breakpoint()
 
 
 def __write_std_consistent_nl__(msg: str | bytes, stderr: bool = False) -> None:
@@ -67,7 +67,7 @@ def __write_std_consistent_nl__(msg: str | bytes, stderr: bool = False) -> None:
         setattr(__write_std_consistent_nl__, "newlined_last", True)
 
     message_bytes: bytes = to_bytes(msg)
-    if getattr(__write_std_consistent_nl__, "newlined_last"):
+    if getattr(__write_std_consistent_nl__, "newlined_last") or message_bytes.startswith(b"\n\r"):
         os.write(1 if not stderr else 2, message_bytes)
     else:
         os.write(1 if not stderr else 2, b"\n\r" + message_bytes)

@@ -197,3 +197,42 @@ Project log for what was done, when, why and what went wrong
     - considering WebTransport(or WebSocketStream) instead of WebSocket
 # Week 10
 1. Protocol design
+# Week 11
+1. Protocol adjustments
+2. Frontend Protocol implementation
+3. Backend Protocol implementation
+# Week 12
+1. Backend Protocol implementation
+2. Architecture rework:
+    - relay.py:
+        - keeps extactly ONE connection to the frontend
+        - routes protocol messages from/to multiple shells to/from the frontend
+        - connection stateful
+            - resets (LTM) unknown peers
+    - terminal.py
+        - provides extended shell access to VSCode Extension frontend
+            - UI triggered make flash, term
+    - web_riot.py
+        - stub to be integrated in place of make backend calls
+        - replaces make targets
+        - constructs and parses protocol messages
+        - comminicates with the frontend via protocol messages
+        - presents frontend command output as its own stdout
+# Week 13
+1. Frontend:
+    - Adafruit Feather Flasher(Rnode)
+    - changed device names
+2. Backend
+    - moved protocol logic to stub.py
+    - reowrked riot-patches:
+        - added serial
+        - adjusted flasher
+    - Dockerfile:
+        - docker base img to debian bookworm (for python libs)
+        - added RIOT dependencies for esp
+        - integrated riot tools (shell, relay, stub) into /usr/bin/riot-tools
+# Week 14
+1. Frontend
+2. Backend:
+    - reworked shell.py:
+        - interactive shell (raw ttys)

@@ -92,24 +92,20 @@ class AsyncWebSocketServer(AsyncRemoteSocketServer[wss.WebSocketServerProtocol])
                          on_message_callback,
                          event_loop)
         
-        event_loop.create_task(self.__run__(event_loop))
+        event_loop.create_task(self.__run__())
 
-    async def __run__(self, event_loop: asyncio.AbstractEventLoop) -> None:
+    async def __run__(self) -> None:
         if self.server and self.server.is_serving():
             log.warn("WebSocketServer already started!")
             return
-        log.info("Starting WebSocketServer...")
         self.server = await wss.serve(self.__handler__, self.host, self.port)
         log.info("WebSocketServer started!")
-        #TODO: not consistent through versions
-        #event_loop.create_task(self.server.serve_forever())
 
     async def __handler__(self, websocket: ConnectionHandle) -> None:
         log.info(f"AsyncWebSocketServer.__handler__: New WebSocket connection from {websocket.remote_address}")
         self.on_connection_opened_callback(websocket)
         try:
             async for message in websocket:
-                log.info(f"AsyncWebSocketServer.__handler__: Message recieved, raw: \n{message}\n")
                 if type(message) is bytes:
                     self.on_message_callback(websocket, message)
                 else:
@@ -119,7 +115,7 @@ class AsyncWebSocketServer(AsyncRemoteSocketServer[wss.WebSocketServerProtocol])
         self.on_connection_closed_callback(websocket)
     
     async def __write__(self, socket_handle: ConnectionHandle, message: SocketMessageType) -> None:
-        log.info(f"AsyncWebSocketServer: Writing {message}")
         await socket_handle.send(message) # type: ignore
 
-    
+# WebsocketStream or WebTransport implementations could be made here.
+# We currently dont see any benefit of using those.
