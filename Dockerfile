@@ -118,6 +118,9 @@ RUN echo 'Installing arm-none-eabi toolchain from arm.com' >&2 && \
 
 ENV PATH="${PATH}:/opt/${ARM_FOLDER}/bin"
 
+# Adafruit NRF Util
+RUN pip3 install adafruit-nrfutil --break-system-packages
+
 # Removed MIPS
 
 # Removed RISC-V binary toolchain
@@ -220,7 +223,8 @@ ARG RIOT_WEB_RIOT_PATCH_SERIAL_SRC="./riot-patch/serial.inc.mk"
 
 COPY --chown=$USERID:$GROUPID "${RIOT_WEB_RIOT_PATCH_PROGRAMMER_SRC}" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/programmer.inc.mk"
 COPY --chown=$USERID:$GROUPID "${RIOT_WEB_RIOT_PATCH_SERIAL_SRC}" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/serial.inc.mk"
-COPY --chown=$USERID:$GROUPID "./riot-patch/uf2conv.inc.mk" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/uf2conv.inc.mk"
+COPY --chown=$USERID:$GROUPID "./riot-patch/adafruit-nrfutil.inc.mk" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/adafruit-nrfutil.inc.mk"
+COPY --chown=$USERID:$GROUPID "./riot-patch/Makefile.include" "${RIOT_WEB_RIOT_DIR}/boards/common/adafruit-nrf52-bootloader/Makefile.include"
 
 # coder/code-server
 # CODE-SERVER has a associated VSCODE version, needs to be set in the extensions, package.json -> engines: vscode correctly!!
@@ -238,7 +242,7 @@ COPY --chown=$USERID:$GROUPID "./config/default-vscode-user-settings.json" "${RI
 RUN chown -R $USERNAME:$USERNAME "${RIOT_WEB_USER_HOME}"
 
 # VSCode Extension
-ARG RIOT_WEB_VSCODE_EXTENSION_VERSION="0.0.10"
+ARG RIOT_WEB_VSCODE_EXTENSION_VERSION="0.0.1"
 ARG RIOT_WEB_VSCODE_EXTENSION_PKG_SRC="./extensions/RIOT-VS-Code-Extension/extensions/web/riot-web-extension-${RIOT_WEB_VSCODE_EXTENSION_VERSION}.vsix"
 
 ENV RIOT_WEB_VSCODE_EXTENSION_PKG="${RIOT_WEB_USER_HOME}/.local/share/code-server/extensions/riot-web-extension.vsix"

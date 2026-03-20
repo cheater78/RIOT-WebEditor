@@ -1,7 +1,0 @@
-FLASHFILE ?= $(HEXFILE)
-IMAGE_OFFSET ?= $(ROM_OFFSET)
-
-ifeq (1,$(RIOT_WEB))
-  FLASHER := 
-  FFLAGS := 
-endif
