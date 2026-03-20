@@ -232,7 +232,8 @@ Project log for what was done, when, why and what went wrong
         - added RIOT dependencies for esp
         - integrated riot tools (shell, relay, stub) into /usr/bin/riot-tools
 # Week 14
-1. Frontend
+1. Frontend:
+
 2. Backend:
     - reworked shell.py:
         - interactive shell (raw ttys)

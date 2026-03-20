@@ -2,43 +2,36 @@ import asyncio
 from abc import abstractmethod
 from typing import Callable
 
-import log
-from safe_types import to_bytes
+from riot_web_tools.utils import log
+from riot_web_tools.utils.types.bytes import to_bytes
 
-RemoteSocketConnectionCallbackFunc = Callable[[], None]
-RemoteSocketConnectionFailedCallbackFunc = Callable[[bool], None]
-RemoteSocketMessageCallbackFunc = Callable[[bytes], None]
+ClientConnectionCallbackFunc = Callable[[], None]
+ClientMessageCallbackFunc = Callable[[bytes], None]
 class AsyncRemoteSocketClient:
     _event_loop: asyncio.AbstractEventLoop
     _is_connecting: bool
     _is_disconnecting: bool
     _reconnect_delay_s: float
-    _reconnect_trys: int
 
-    _opened_cb: RemoteSocketConnectionCallbackFunc
-    _closed_cb: RemoteSocketConnectionCallbackFunc
-    _failed_cb: RemoteSocketConnectionFailedCallbackFunc
-    _message_cb: RemoteSocketMessageCallbackFunc
+    _opened_cb: ClientConnectionCallbackFunc
+    _closed_cb: ClientConnectionCallbackFunc
+    _message_cb: ClientMessageCallbackFunc
 
     _write_queue: asyncio.Queue[bytes]
 
     def __init__(self,
-                 opened_callback: RemoteSocketConnectionCallbackFunc,
-                 closed_callback: RemoteSocketConnectionCallbackFunc,
-                 failed_cb: RemoteSocketConnectionFailedCallbackFunc,
-                 message_callback: RemoteSocketMessageCallbackFunc,
+                 opened_callback: ClientConnectionCallbackFunc,
+                 closed_callback: ClientConnectionCallbackFunc,
+                 message_callback: ClientMessageCallbackFunc,
                  reconnect_delay_s: float = 1,
-                 reconnect_trys: int = 3,
                  event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()) -> None:
         self._event_loop=event_loop
         self._is_connecting = False
         self._is_disconnecting = False
         self._reconnect_delay_s = reconnect_delay_s
-        self._reconnect_trys = reconnect_trys if reconnect_trys > 0 else 1
 
         self._opened_cb = opened_callback
         self._closed_cb = closed_callback
-        self._failed_cb = failed_cb
         self._message_cb = message_callback
         self._write_queue = asyncio.Queue[bytes]()
 
@@ -74,13 +67,12 @@ class AsyncRemoteSocketClient:
             self._event_loop.create_task(self._write_queue.put(msg))
 
     async def __connect_and_run__(self) -> None:
-        for i in range(self._reconnect_trys):
+        while True:
             await self.__connect__()
-            if self.is_connected():
-                break
-            else:
-                self._failed_cb(i + 1 != self._reconnect_trys)
+            if not self.is_connected():
                 await asyncio.sleep(self._reconnect_delay_s)
+            else:
+                break
         self._is_connecting = False
         if self.is_connected():
             self._event_loop.create_task(self.__reader__())
@@ -110,7 +102,10 @@ class AsyncRemoteSocketClient:
 
     async def __reader__(self) -> None:
         while self.is_connected():
-            raw_read: bytes | None = await self.__read__()
+            try:
+                raw_read: bytes | None = await self.__read__()
+            except:
+                break
             if not raw_read:
                 await asyncio.sleep(0)
                 continue
@@ -132,6 +127,8 @@ class AsyncRemoteSocketClient:
             except asyncio.QueueEmpty:
                 await asyncio.sleep(0)
                 continue
+            except:
+                break
         self._closed_cb()
 
 # Websocket
@@ -142,24 +139,20 @@ class AsyncWebsocketClient(AsyncRemoteSocketClient):
     _websocket: wsc.WebSocketClientProtocol | None = None # type: ignore
 
     def __init__(self,
-                 opened_callback: RemoteSocketConnectionCallbackFunc,
-                 closed_callback: RemoteSocketConnectionCallbackFunc,
-                 failed_cb: RemoteSocketConnectionFailedCallbackFunc,
-                 message_callback: RemoteSocketMessageCallbackFunc,
+                 opened_callback: ClientConnectionCallbackFunc,
+                 closed_callback: ClientConnectionCallbackFunc,
+                 message_callback: ClientMessageCallbackFunc,
                  address: str = "127.0.0.1",
                  port: int = 7777,
                  use_ssl: bool = False,
                  reconnect_delay_s: float = 1,
-                 reconnect_trys: int = 3,
                  event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
         self._location: str = "ws" + ("s" if use_ssl else "") + "://" + str(address) + ":" + str(port)
 
         super().__init__(opened_callback,
                          closed_callback,
-                         failed_cb,
                          message_callback,
                          reconnect_delay_s,
-                         reconnect_trys,
                          event_loop)
         
     def is_connected(self) -> bool:
@@ -188,3 +181,10 @@ class AsyncWebsocketClient(AsyncRemoteSocketClient):
 
 # WebsocketStream or WebTransport implementations could be made here.
 # We currently don't see any benefit of using those.
+
+__all__ = [
+    "ClientConnectionCallbackFunc",
+    "ClientMessageCallbackFunc",
+    "AsyncRemoteSocketClient",
+    "AsyncWebsocketClient",
+]

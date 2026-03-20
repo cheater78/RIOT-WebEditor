@@ -1,6 +1,6 @@
 import os
 from enum import IntEnum
-from safe_types import to_bytes
+from riot_web_tools.utils.types.bytes import to_bytes
 
 class ANSIColor(IntEnum):
     RESET = 0
@@ -21,16 +21,22 @@ class Level(IntEnum):
     ERROR = 0
     WARN = 1
     INFO = 2
+    TRACE = 3
 
 log_level: Level = Level.INFO
 enable_asserts: bool = True # whether assert should stop execution
 
 def __nl__(msg: bytes) -> bytes:
-    return msg + (b"" if msg.endswith(b"\n\r") else b"     --NL\n\r")
+    msg = msg.replace(b"\n", b"\n\r")
+    return msg + (b"" if msg.endswith(b"\n\r") or msg.endswith(b"\r\n") else b"\n\r")
+
+def trace(log_msg: str | bytes) -> None:
+    if log_level >= Level.TRACE:
+        __write_std_consistent_nl__(ansi_colorize(b"[TRACE]: " + __nl__(to_bytes(log_msg)), ANSIColor.WHITE))
 
 def info(log_msg: str | bytes) -> None:
     if log_level >= Level.INFO:
-        __write_std_consistent_nl__(ansi_colorize(b"[INFO]: " + to_bytes(log_msg), ANSIColor.GREEN))
+        __write_std_consistent_nl__(ansi_colorize(b"[INFO]: " + __nl__(to_bytes(log_msg)), ANSIColor.GREEN))
 
 def info_ifn(condition: bool, log_msg: str | bytes) -> None:
     if log_level >= Level.INFO:

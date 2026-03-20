@@ -55,23 +55,21 @@ run_silent() {
 	fi
 }
 
-if [[ $BUILD == true ]]; then
-	# Build extension
+if [[ $SKIP_NPM == false ]]; then
+	cd "${PROJECT_DIR}/extensions/RIOT-VS-Code-Extension/extensions/web"
 	if [[ $UPDATE == true ]]; then
-		run_silent git submodule update --init
+		run_silent git stash
+		run_silent git checkout webDev # TODO: remove for shipping
+		run_silent git pull
 	fi
-	
-	if [[ $SKIP_NPM == false ]]; then
-		cd "${PROJECT_DIR}/extensions/RIOT-VS-Code-Extension/extensions/web"
-		if [[ $UPDATE == true ]]; then
-			run_silent git stash
-			run_silent git pull
-		fi
-		run_silent npm install
-		run_silent npm run compile-web
-		run_silent npm run package
-		cd "${PROJECT_DIR}"
-	fi
+	run_silent npm install
+	run_silent npm run compile-web
+	run_silent npm run package
+	cd "${PROJECT_DIR}"
+fi
+
+if [[ $BUILD == true ]]; then
+	"${PROJECT_DIR}/riot-web-tools/ship.sh"
 
 	DEBUG_ARG=""
 	if [[ $DEBUG == true ]]; then

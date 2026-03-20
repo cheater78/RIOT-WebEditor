@@ -3,12 +3,12 @@ import struct
 import os, signal, time, pty, fcntl, termios
 from typing import MutableMapping, Optional, Callable
 
-import log
-from safe_types import to_bytes
-from fd_io import FDMessageType, FDCallbackFunc
-from tty_io import PTYMasterIO, TTYActionRaw
-from protocol_fd_io import ProtocolMUXFDIO
-from protocol import ProtocolMessage, MessageLinkTermination, ProtocolCallbackFunc
+from riot_web_tools.utils import log
+from riot_web_tools.utils.types.bytes import to_bytes
+from riot_web_tools.protocol import *
+from riot_web_tools.protocol.transport.protocol_fd_io import *
+from .fd_io import FDMessageType, FDCallbackFunc
+from .tty_io import PTYMasterIO, TTYActionRaw
 
 ShellEnvironment = MutableMapping[str, str]
 ShellClosedCallbackFunc = Callable[[], None]
@@ -189,14 +189,14 @@ class RiotWebShellProcess(ShellProcess):
     A ShellProcess that provides the necessary environment (RIOT_WEB=1, RIOT_WEB_SHELL_ID) to the shell,
     as well as Stub awareness for protocol communication
     """
-    _pty_master_muxfdio: ProtocolMUXFDIO
-    _shell_protocol_output_cb: ProtocolCallbackFunc
+    _pty_master_protocol: ProtocolMUXFDIO
+    _shell_protocol_output_cb: ProtocolClientCallbackFunc
 
     _stub_protocol_ready: bool
 
     def __init__(self,
                 shell_raw_output_cb: FDCallbackFunc,
-                shell_protocol_output_cb: ProtocolCallbackFunc,
+                shell_protocol_output_cb: ProtocolClientCallbackFunc,
                 shell_closed_cb: ShellClosedCallbackFunc,
                 riot_web_shell_id: int,
                 shell_binary_path: str = "/bin/bash",
@@ -222,27 +222,34 @@ class RiotWebShellProcess(ShellProcess):
             event_loop
         )
         # provide a FDProtocolIO handle to mux protocol messages through the pty
-        self.pty_master_protocol = ProtocolMUXFDIO(self._pty_master, self.__on_shell_protocol_output__)
+        self._pty_master_protocol = ProtocolMUXFDIO(self._pty_master, self.__on_shell_protocol_output__)
 
         self._stub_protocol_ready = False
 
     def is_stub_protocol_ready(self) -> bool:
         return self.is_busy() and self._stub_protocol_ready
+    
+    def set_link_established(self) -> None:
+        self._stub_protocol_ready = True
 
-    def write_protocol(self, message: ProtocolMessage) -> None:
+    def write_protocol(self, message: Message) -> None:
         log.err_assert(self.is_busy() and self.is_stub_protocol_ready(), f"ShellProcess.write_protocol: called while no stub was running! Check before calling!")
 
         # Device closed the Link -> Stub will close connection
-        if isinstance(message, MessageLinkTermination):
+        if isinstance(message, MessageReset):
             self._stub_protocol_ready = False 
 
-        self._pty_master_muxfdio.write(message)
+        self._pty_master_protocol.write(message)
 
-    def __on_shell_protocol_output__(self, message: ProtocolMessage) -> None:
+    def __on_shell_protocol_output__(self, message: Message) -> None:
+        if not isinstance(message, LinkMessage):
+            log.warn(f"Received non LinkMessage from Stub! Message: {message}")
+            return
+
         # Any non MessageLinkTermination from the Stub is considered a ready connection.
         # The Stub initiates protocol communication availability
         # Protocol communication availability to the Stub can be revoked by either a Stub or Device LTM
-        self._stub_protocol_ready = not isinstance(message, MessageLinkTermination)
+        self._stub_protocol_ready = not isinstance(message, MessageReset)
 
         self._shell_protocol_output_cb(message)
 

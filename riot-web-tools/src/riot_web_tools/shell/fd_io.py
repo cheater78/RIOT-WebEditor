@@ -154,7 +154,7 @@ class MUXFDIO(FDIO):
         self.fdio.setCallbackFunction(self.__on_raw_fdin__)
         self.on_channel_input = {}
 
-        self.header_magic_delimiter = b"RIOTWebMultiplexFDIO"
+        self.header_magic_delimiter = b"\0\2\0\2RIOTWebMUXFDIO\0\3\0\3"
         self.header_format = f">{len(self.header_magic_delimiter)}sBI"
         self.header_size = struct.calcsize(self.header_format)
 

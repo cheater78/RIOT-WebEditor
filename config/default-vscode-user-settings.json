@@ -4,5 +4,14 @@
 	"workbench.colorTheme": "Default Dark+",
 	"telemetry.telemetryLevel": "off",
 	"workbench.secondarySideBar.defaultVisibility": "hidden",
-	"workbench.startupEditor": "none"
+	"workbench.startupEditor": "none",
+	"terminal.integrated.profiles.linux": {
+		"riot-bash": {
+		"path": "/usr/bin/riot-web-tools/shell/shell",
+		"args": [
+			"-i"
+		]
+		}
+	},
+	"terminal.integrated.defaultProfile.linux": "riot-bash"
 }

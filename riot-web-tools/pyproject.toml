@@ -1,0 +1,11 @@
+[tool.poetry]
+name = "riot-web-tools"
+version = "0.0.1"
+description = "riot-web-tools project, shell, stub and relay for the riot web editor"
+authors = []
+
+[tool.pytest.ini_options]
+testpaths = ["./tests"]
+python_files = ["test_*.py"]
+addopts = "-v"
+pythonpath = ["src"]

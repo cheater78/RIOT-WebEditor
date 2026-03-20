@@ -1,6 +1,6 @@
 # RIOT WebEditor Dockerfile
 
-FROM debian:bookworm-slim@sha256:98f4b71de414932439ac6ac690d7060df1f27161073c5036a7553723881bffbe
+FROM ubuntu:noble@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LC_ALL="C.UTF-8"
@@ -15,10 +15,14 @@ ARG GROUPID="1000"
 ARG SHELL="/bin/bash"
 
 # RIOT User environment
+# Ubuntu only: remove default user
+RUN existing_user=$(getent passwd ${USERID} | cut -d: -f1) && \
+    if [ -n "$existing_user" ]; then userdel -r $existing_user; fi && \
+    existing_group=$(getent group ${GROUPID} | cut -d: -f1) && \
+    if [ -n "$existing_group" ]; then groupdel $existing_group; fi
 RUN id -u $USERNAME >/dev/null 2>&1 || \
-    groupadd -g $GROUPID $USERNAME && \
-    useradd -m -u $USERID -g $GROUPID -s $SHELL $USERNAME
-ENV SHELL=$SHELL
+    groupadd -g ${GROUPID} $USERNAME && \
+    useradd -m -s $SHELL -g ${GROUPID} -u ${USERID} $USERNAME
 
 # RIOT dependencies
 ARG LLVM_VERSION=14
@@ -158,45 +162,11 @@ ARG RIOT_TOOLCHAIN_TAG=20200722112854-64162e7
 ARG RIOT_TOOLCHAIN_GCCPKGVER=${RIOT_TOOLCHAIN_GCC_VERSION}-${RIOT_TOOLCHAIN_PACKAGE_VERSION}
 ARG RIOT_TOOLCHAIN_SUBDIR=${RIOT_TOOLCHAIN_GCCPKGVER}-${RIOT_TOOLCHAIN_TAG}
 
-# Removed MSP430 toolchain
-
-# install required python packages from file
-# numpy must be already installed before installing some other requirements (emlearn)
-#RUN apt install -y --no-install-recommends python3-numpy
-#COPY requirements.txt /tmp/requirements.txt
-#RUN echo 'Installing python3 packages' >&2 \
-#    && apt -y --no-install-recommends install python3-pybind11 \
-#    && pip3 install --no-cache-dir -r /tmp/requirements.txt \
-#    && rm /tmp/requirements.txt
-
-# Removed Rust build toolchain
-
-# get laze binary
-# TODO: doesnt work -> /tmp/requirements.txt missing
-# COPY --from=kaspar030/laze:sha-caf7e5b-bookworm@sha256:50865615635532f7ee38dacc612f85157c75b0019165bb87d0ff440e06ebe838 /laze /usr/bin/laze
-
-# get Dockerfile version from build args
-ARG RIOTBUILD_VERSION="unknown"
-ENV RIOTBUILD_VERSION="${RIOTBUILD_VERSION}"
-
-ARG RIOTBUILD_COMMIT="unknown"
-ENV RIOTBUILD_COMMIT="${RIOTBUILD_COMMIT}"
-
-ARG RIOTBUILD_BRANCH="unknown"
-ENV RIOTBUILD_BRANCH="${RIOTBUILD_BRANCH}"
-
-# watch for single ">" vs double ">>"!
-RUN echo "RIOTBUILD_VERSION=$RIOTBUILD_VERSION" > /etc/riotbuild
-RUN echo "RIOTBUILD_COMMIT=$RIOTBUILD_COMMIT" >> /etc/riotbuild
-RUN echo "RIOTBUILD_BRANCH=$RIOTBUILD_BRANCH" >> /etc/riotbuild
-
-# RIOT project dependencies //TODO: alr done in riotbuild?
-# RUN apt-get install -y make gcc-multilib python3-serial python3-psutil wget unzip git openocd gdb-multiarch esptool podman-docker clangd clang
 
 # RIOT-WEB
 ENV RIOT_WEB_USER_HOME="/home/${USERNAME}"
 ENV RIOT_WEB_CONF="${RIOT_WEB_USER_HOME}/.riot-web"
-ENV RIOT_WEB_TOOLS="/usr/bin/riot-web"
+ENV RIOT_WEB_TOOLS="/usr/bin/riot-web-tools"
 
 RUN echo "Creating user home directory" \
     && mkdir -m 777 -p "${RIOT_WEB_USER_HOME}" \
@@ -215,11 +185,11 @@ RUN apt install -y \
     python3-cbor2 \
     python3-websockets
 
-ARG RIOT_WEB_TOOL_SRC="./src"
+ARG RIOT_WEB_TOOL_SRC="./riot-web-tools/dist"
 
-ENV RIOT_WEB_TOOL_RELAY="${RIOT_WEB_TOOLS}/relay.py"
-ENV RIOT_WEB_TOOL_STUB="${RIOT_WEB_TOOLS}/stub.py"
-ENV RIOT_WEB_TOOL_SHELL="${RIOT_WEB_TOOLS}/shell.py"
+ENV RIOT_WEB_TOOL_RELAY="${RIOT_WEB_TOOLS}/relay/relay"
+ENV RIOT_WEB_TOOL_STUB="${RIOT_WEB_TOOLS}/stub/stub"
+ENV RIOT_WEB_TOOL_SHELL="${RIOT_WEB_TOOLS}/shell/shell"
 
 COPY "${RIOT_WEB_TOOL_SRC}" "${RIOT_WEB_TOOLS}"
 
@@ -251,7 +221,7 @@ COPY --chown=$USERID:$GROUPID "./config/default-vscode-user-settings.json" "${RI
 RUN chown -R $USERNAME:$USERNAME "${RIOT_WEB_USER_HOME}"
 
 # VSCode Extension
-ARG RIOT_WEB_VSCODE_EXTENSION_VERSION="0.0.7"
+ARG RIOT_WEB_VSCODE_EXTENSION_VERSION="0.0.1"
 ARG RIOT_WEB_VSCODE_EXTENSION_PKG_SRC="./extensions/RIOT-VS-Code-Extension/extensions/web/riot-web-extension-${RIOT_WEB_VSCODE_EXTENSION_VERSION}.vsix"
 
 ENV RIOT_WEB_VSCODE_EXTENSION_PKG="${RIOT_WEB_USER_HOME}/.local/share/code-server/extensions/riot-web-extension.vsix"
@@ -270,8 +240,7 @@ COPY --chown=root:root --chmod=775 "${SRC_DOCKER_ENTRYPOINT}" "${RIOT_WEB_TOOLS}
 EXPOSE 8080
 USER "${USERNAME}"
 ENV HOME="${RIOT_WEB_USER_HOME}"
-#TODO: change to shell.py
-ENV SHELL="/usr/bin/riot-web/shell.py"
+ENV SHELL="${SHELL}"
 WORKDIR "$HOME"
 
 ENTRYPOINT []
