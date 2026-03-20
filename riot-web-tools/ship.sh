@@ -9,6 +9,7 @@ build() {
     script=$1
 
     # keep .spec, but in build
+    mkdir -p "${BUILDPATH}"
     cd "${BUILDPATH}"
 
     python3 -m PyInstaller \

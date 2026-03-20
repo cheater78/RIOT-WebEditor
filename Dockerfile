@@ -100,7 +100,23 @@ RUN \
         telnet
 # Removed MP430
 
-# Removed ARM
+# Install ARM GNU embedded toolchain
+# For updates, see https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
+ARG ARM_URLBASE=https://developer.arm.com/-/media/Files/downloads/gnu-rm
+ARG ARM_URL=${ARM_URLBASE}/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+ARG ARM_MD5=2383e4eb4ea23f248d33adc70dc3227e
+ARG ARM_FOLDER=gcc-arm-none-eabi-10.3-2021.10
+RUN echo 'Installing arm-none-eabi toolchain from arm.com' >&2 && \
+    mkdir -p /opt && \
+    curl -L -o /opt/gcc-arm-none-eabi.tar.bz2 ${ARM_URL} && \
+    echo "${ARM_MD5} /opt/gcc-arm-none-eabi.tar.bz2" | md5sum -c && \
+    tar -C /opt -jxf /opt/gcc-arm-none-eabi.tar.bz2 && \
+    rm -f /opt/gcc-arm-none-eabi.tar.bz2 && \
+    echo 'Removing documentation' >&2 && \
+    rm -rf /opt/gcc-arm-none-eabi-*/share/doc
+    # No need to dedup, the ARM toolchain is already using hard links for the duplicated files
+
+ENV PATH="${PATH}:/opt/${ARM_FOLDER}/bin"
 
 # Removed MIPS
 
@@ -204,6 +220,9 @@ ARG RIOT_WEB_RIOT_PATCH_SERIAL_SRC="./riot-patch/serial.inc.mk"
 
 COPY --chown=$USERID:$GROUPID "${RIOT_WEB_RIOT_PATCH_PROGRAMMER_SRC}" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/programmer.inc.mk"
 COPY --chown=$USERID:$GROUPID "${RIOT_WEB_RIOT_PATCH_SERIAL_SRC}" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/serial.inc.mk"
+RUN rm "${RIOT_WEB_RIOT_DIR}/tools/uf2conf.inc.mk"
+RUN rm "${RIOT_WEB_RIOT_DIR}/tools/adafruit-nrfutil.inc.mk"
+
 
 # coder/code-server
 # CODE-SERVER has a associated VSCODE version, needs to be set in the extensions, package.json -> engines: vscode correctly!!
@@ -221,7 +240,7 @@ COPY --chown=$USERID:$GROUPID "./config/default-vscode-user-settings.json" "${RI
 RUN chown -R $USERNAME:$USERNAME "${RIOT_WEB_USER_HOME}"
 
 # VSCode Extension
-ARG RIOT_WEB_VSCODE_EXTENSION_VERSION="0.0.1"
+ARG RIOT_WEB_VSCODE_EXTENSION_VERSION="0.0.10"
 ARG RIOT_WEB_VSCODE_EXTENSION_PKG_SRC="./extensions/RIOT-VS-Code-Extension/extensions/web/riot-web-extension-${RIOT_WEB_VSCODE_EXTENSION_VERSION}.vsix"
 
 ENV RIOT_WEB_VSCODE_EXTENSION_PKG="${RIOT_WEB_USER_HOME}/.local/share/code-server/extensions/riot-web-extension.vsix"

@@ -21,9 +21,15 @@ else
 endif
 
 ifeq (1,$(RIOT_WEB))
+  FLASHER=
+  PROGRAMMER_RESET=
+
   ifeq (esptool,$(PROGRAMMER))
     BINARIES={\"$(BOOTLOADER_POS)\":\"$(BOOTLOADER_BIN)\",\"0x8000\":\"$(BINDIR)/partitions.bin\",\"$(FLASHFILE_POS)\":\"$(FLASHFILE)\"}
-  else ifeq (dfu,$(PROGRAMMER))
+  else ifeq (adafruit-nrfutil,$(PROGRAMMER))
+    BINARIES={\"0x00\":\"$(FLASHFILE)\"}
+  else ifeq (uf2conv,$(PROGRAMMER))
+    PROGRAMMER=adafruit-nrfutil
     BINARIES={\"0x00\":\"$(FLASHFILE)\"}
   else
     BINARIES={}
@@ -37,5 +43,4 @@ ifeq (1,$(RIOT_WEB))
   "$(BINARIES)" \
 	"$(FFLAGS)"
 
-  PROGRAMMER_RESET = ""
 endif

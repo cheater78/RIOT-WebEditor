@@ -6,6 +6,13 @@ apt install -y \
     python3 \
     python3-websockets \
     python3-cbor2 \
-    python3-pytest
+    python3-pytest \
+    python3-pip
 
 python3 -m pip install --user pyinstaller --break-system-packages
+
+apt remove -y nodejs npm
+curl -sL https://deb.nodesource.com/setup_23.x | bash -
+apt install nodejs -y
+
+chmod +x $(find | grep .sh)
