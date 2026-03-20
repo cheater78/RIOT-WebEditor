@@ -21,26 +21,26 @@ else
 endif
 
 ifeq (1,$(RIOT_WEB))
-  FLASHER=
-  PROGRAMMER_RESET=
-
-  ifeq (esptool,$(PROGRAMMER))
-    BINARIES={\"$(BOOTLOADER_POS)\":\"$(BOOTLOADER_BIN)\",\"0x8000\":\"$(BINDIR)/partitions.bin\",\"$(FLASHFILE_POS)\":\"$(FLASHFILE)\"}
-  else ifeq (adafruit-nrfutil,$(PROGRAMMER))
-    BINARIES={\"0x00\":\"$(FLASHFILE)\"}
-  else ifeq (uf2conv,$(PROGRAMMER))
-    PROGRAMMER=adafruit-nrfutil
-    BINARIES={\"0x00\":\"$(FLASHFILE)\"}
-  else
-    BINARIES={}
-  endif
+  PROGRAMMER_RESET :=
   
-  PROGRAMMER_FLASH = $(RIOT_WEB_TOOL_STUB) \
-  "flash" \
-  "$(PORT)" \
-	"$(BOARD)" \
-  "$(PROGRAMMER)" \
-  "$(BINARIES)" \
-	"$(FFLAGS)"
-
+  ifeq (esptool,$(PROGRAMMER))
+    BINARIES := {\"$(BOOTLOADER_POS)\":\"$(BOOTLOADER_BIN)\",\"0x8000\":\"$(BINDIR)/partitions.bin\",\"$(FLASHFILE_POS)\":\"$(FLASHFILE)\"}
+  else ifeq (adafruit-nrfutil,$(PROGRAMMER))
+    BINARIES := {\"0x00\":\"$(FLASHFILE)\"}
+  else ifeq (uf2conv,$(PROGRAMMER))
+    PROGRAMMER := adafruit-nrfutil
+    BINARIES := {\"0x00\":\"$(FLASHFILE)\"}
+  else
+    BINARIES := {}
+  endif
+  FLASHER := $(RIOT_WEB_TOOL_STUB)
+  FFLAGS := "flash" \
+    "$(PORT)" \
+    "$(BOARD)" \
+    "$(PROGRAMMER)" \
+    "$(BINARIES)" \
+    "$(FFLAGS)"
+  
+  PROGRAMMER_FLASH := $(FLASHER) $(FFLAGS)
+  
 endif

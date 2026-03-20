@@ -220,9 +220,8 @@ ARG RIOT_WEB_RIOT_PATCH_SERIAL_SRC="./riot-patch/serial.inc.mk"
 
 COPY --chown=$USERID:$GROUPID "${RIOT_WEB_RIOT_PATCH_PROGRAMMER_SRC}" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/programmer.inc.mk"
 COPY --chown=$USERID:$GROUPID "${RIOT_WEB_RIOT_PATCH_SERIAL_SRC}" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/serial.inc.mk"
-RUN rm "${RIOT_WEB_RIOT_DIR}/tools/uf2conf.inc.mk"
-RUN rm "${RIOT_WEB_RIOT_DIR}/tools/adafruit-nrfutil.inc.mk"
-
+COPY --chown=$USERID:$GROUPID "./riot-patch/uf2conv.inc.mk" "${RIOT_WEB_RIOT_DIR}/makefiles/tools/uf2conv.inc.mk"
+COPY --chown=$USERID:$GROUPID "./riot-patch/Makefile.include" "${RIOT_WEB_RIOT_DIR}/Makefile.include"
 
 # coder/code-server
 # CODE-SERVER has a associated VSCODE version, needs to be set in the extensions, package.json -> engines: vscode correctly!!

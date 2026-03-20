@@ -22,20 +22,6 @@ class RiotWebShellProxy:
 
         self.async_event_loop = asyncio.new_event_loop()
 
-        log.info(f">Starting TTYIO...")
-        self.tty_io = TTYRawIO(
-            self.__on_tty_raw_stdin__,
-            on_tty_win_resize=self.__on_tty_window_resize__,
-            reformat_output=True,
-            event_loop=self.async_event_loop)
-
-        log.info(f">Creating AsyncWebsocketClient...")
-        self.remote_socket_me = ShellAddress(self.shell_id)
-        self.protocol_socket = ProtocolAsyncRemoteSocketClient(
-            self.shell_id,
-            self.__on_remote_socket_protocol_link_message__,
-            event_loop=self.async_event_loop)
-
         log.info(f">Starting RiotWebShellProcess...")
         self.shell_process = RiotWebShellProcess(
             self.__on_raw_shell_output__,
@@ -45,7 +31,22 @@ class RiotWebShellProxy:
             riot_web_shell_id = self.shell_id,
             event_loop = self.async_event_loop)
         
+        log.info(f">Creating AsyncWebsocketClient...")
+        self.remote_socket_me = ShellAddress(self.shell_id)
+        self.protocol_socket = ProtocolAsyncRemoteSocketClient(
+            self.shell_id,
+            self.__on_remote_socket_protocol_link_message__,
+            event_loop=self.async_event_loop)
+
+        log.info(f">Starting TTYIO...")
+        self.tty_io = TTYRawIO(
+            self.__on_tty_raw_stdin__,
+            on_tty_win_resize=self.__on_tty_window_resize__,
+            reformat_output=True,
+            event_loop=self.async_event_loop)
+
         self.shell_process.set_window_size(*self.tty_io.get_window_size())
+
         self.user_mode = False
         self.locked_device = None
 
