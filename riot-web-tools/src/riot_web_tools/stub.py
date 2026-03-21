@@ -68,10 +68,6 @@ class CommandHandler:
     def _stop_(self) -> None:
         self._event_loop.stop()
 
-    def _send_reset_(self, termination_type: TerminationType, msg: str) -> None:
-        rst: MessageReset = MessageReset(self._protocol_me, self._device, termination_type, msg)
-        self._std_protocol_io.write(rst)
-
     @abstractmethod
     def _on_raw_stdin_(self, message: bytes) -> None:
         pass
@@ -208,7 +204,14 @@ class TermCommandHandler(CommandHandler):
         return self._arg_parser #type: ignore
 
     def _stop_term_(self, success: bool = False, message: str = "Term was stopped!"):
-        self._send_reset_(TerminationType.SUCCESS if success else TerminationType.ERROR, message)
+        self._std_protocol_io.write(
+            MessageReset(
+                self._protocol_me,
+                self._device,
+                TerminationType.SUCCESS if success else TerminationType.ERROR,
+                message
+            )
+        )
         super()._stop_()
 
     def _on_raw_stdin_(self, message: bytes) -> None:

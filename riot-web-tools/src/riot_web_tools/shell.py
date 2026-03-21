@@ -87,7 +87,7 @@ class RiotWebShellProxy:
     def __on_tty_raw_stdin__(self, data: bytes) -> None:
         if not self.shell_process.is_busy() and bytes(TTYActionRaw.RETURN) in data:
             self.user_mode = True
-        if self.locked_device is not None and bytes(TTYActionRaw.CANCEL) in data:
+        if self.locked_device is not None and not self.shell_process.is_stub_protocol_ready() and bytes(TTYActionRaw.CANCEL) in data:
             self.protocol_socket.write_protocol(MessageReset(self.remote_socket_me, self.locked_device, TerminationType.ERROR, "Action canceled by user!"))
             self.locked_device = None
         # Forwand to Shell

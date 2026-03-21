@@ -51,7 +51,7 @@ class Relay:
                         log.warn(f"{link_message.sender} tried to send a MessageRequest to the Client! Dropping! Message:{req}")
                         return
                     if req in self.requested_shells.values():
-                        log.warn(f"MessageRequest duplicate recieved! Message:{link_message}")
+                        log.warn(f"MessageRequest duplicate recieved! Dropping Message:{link_message}")
                         return
                     if not req.spawned:
                         log.info(f"MessageRequest received from {req.sender} but Shell is dead. Message:{req}")
@@ -65,7 +65,7 @@ class Relay:
                         return
                     log.info(f"MessageRequest staged. {req.receiver} is required to register now. Message:{req}")
                     self.requested_shells[reciever_addr] = req
-                    # TODO: crude timeout impl! - probably not working
+                    # NOTE: crude timeout impl! - clean up if needed
                     async def timeout_worker():
                         await asyncio.sleep(3)
                         if reciever_addr in self.requested_shells.keys():
