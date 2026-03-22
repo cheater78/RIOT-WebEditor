@@ -188,4 +188,8 @@ Proposed extension:
     - increase the extension version in package.json
     - increase the RIOT_WEB_VSCODE_EXTENSION_VERSION in the Dockerfile to match that version
     - then rebuild the image
+    - browser (such as brave) cache site data (such as the extension.js), even though you "clear\[ed\] cookies AND SITE DATA"
+        - in order to get rid of your old STILL CACHED extension you need to clear your browser data in settings
+        - deleting service workers or clearing site data using debug>Application>Storage>Clear ALSO WON'T DO ANYTHING
+        - you have been warned, turn back before its too late, traveler
 - docker.sh is a tool to help with dev/test/deployment, you should adjust it to your workflow
