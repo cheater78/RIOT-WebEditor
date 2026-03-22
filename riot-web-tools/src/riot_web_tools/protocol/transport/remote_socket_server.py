@@ -73,6 +73,9 @@ class ProtocolAsyncRemoteSocketServer(AsyncRemoteSocketServerImplementation):
     def is_established(self, address: IDAddress) -> bool:
         return self._connections.get(address, None) != None
 
+    def get_established(self) -> list[IDAddress]:
+        return list(self._connections.keys())
+
     def __establish_connection__(self, handle: SocketHandle, address: IDAddress) -> None:
         self.__wipe_connection__(handle) # remove if ws obj alr exists
         self._connections[address] = handle

@@ -24,6 +24,12 @@ class Relay:
         log.warn(">Event loop stopped!")
 
     def __on_protocol_connection_established__(self, peer_id: IDAddress) -> None:
+        if isinstance(peer_id, ClientAddress):
+            for established in self.socket_server.get_established():
+                if isinstance(established, ShellAddress):
+                    self.socket_server.write_link(MessageReset(peer_id, established, TerminationType.ERROR, "Client reconnected!"))
+            self.requested_shells.clear()
+            return
         if not peer_id in self.requested_shells.keys():
             return
         log.info(f"Relaying RequestMessage after Shell connection has been established!")

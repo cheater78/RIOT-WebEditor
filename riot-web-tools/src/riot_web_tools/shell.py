@@ -105,9 +105,9 @@ class RiotWebShellProxy:
         # NOTE: not great, but works
         # premise: a failing compile will output to stdout and stop at some point, it will not call flash(stub)
         #   critical: the (last) propagating stdout takes longer to reach this function, than the front process group to change back to the backend shell (!is_busy)
-        if self.locked_device is not None and not self.shell_process.is_busy(): 
-            self.protocol_socket.write_protocol(MessageReset(self.remote_socket_me, self.locked_device, TerminationType.ERROR, "Process ended!"))
-            self.locked_device = None
+        # if self.locked_device is not None and not self.shell_process.is_busy(): 
+        #     self.protocol_socket.write_protocol(MessageReset(self.remote_socket_me, self.locked_device, TerminationType.ERROR, "Process ended!"))
+        #     self.locked_device = None
 
     def __on_protocol_shell_output__(self, message: Message) -> None:
         log.info(f"Forwarding ShellProtocol to SocketProtocol: {message}")

@@ -10,6 +10,7 @@ __all__ = [
 
     "TTYActionRaw",
     "TTYRawIO",
+    "PTYIO",
     "PTYMasterIO",
     
     "ShellProcess",

@@ -73,8 +73,8 @@ class TTYRawIO(STDIO):
         rows, cols, _, _ = struct.unpack("HHHH", data)
         return rows, cols
 
-class PTYMasterIO(FDIO):
-    master_fd: int
+class PTYIO(FDIO):
+    fd: int
     pty_in: FDWriter
     pty_out: AsyncFDReader
 
@@ -82,9 +82,9 @@ class PTYMasterIO(FDIO):
                  master_pty_fd: int,
                  pty_out_callback: FDCallbackFunc,
                  event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
-        self.master_fd = master_pty_fd
-        self.pty_in = FDWriter(self.master_fd)
-        self.pty_out = AsyncFDReader(self.master_fd, pty_out_callback, event_loop)
+        self.fd = master_pty_fd
+        self.pty_in = FDWriter(self.fd)
+        self.pty_out = AsyncFDReader(self.fd, pty_out_callback, event_loop)
     
     def write(self, data: FDMessageType) -> None:
         self.pty_in.write(data)
@@ -94,10 +94,18 @@ class PTYMasterIO(FDIO):
 
     def getCallbackFunction(self) -> FDCallbackFunc:
         return self.pty_out.fd_callback
+
+class PTYMasterIO(PTYIO):
+
+    def __init__(self,
+                 master_pty_fd: int,
+                 pty_out_callback: FDCallbackFunc,
+                 event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
+        super().__init__(master_pty_fd, pty_out_callback, event_loop)
     
     def set_window_size(self, rows: int, cols: int) -> None:
         fcntl.ioctl(
-            self.master_fd,
+            self.fd,
             termios.TIOCSWINSZ,
             struct.pack("HHHH", rows, cols, 0, 0),
         )

@@ -4,16 +4,16 @@ class MyStructTag(StructTag):
     TypeA = 1
     TypeB = 2
 
-@dataclass
+@smartdataclass
 class MyTaggedStruct(TaggedSmartStruct[MyStructTag]):
     pass
 
-@dataclass
+@smartdataclass
 class MyStructA(MyTaggedStruct, tag=MyStructTag.TypeA):
     a: int = 1
     b: int = 1
 
-@dataclass
+@smartdataclass
 class MyStructB(MyTaggedStruct, tag=MyStructTag.TypeB):
     a: int = 2
     b: str = "foo"

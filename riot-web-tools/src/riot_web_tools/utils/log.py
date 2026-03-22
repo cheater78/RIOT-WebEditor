@@ -23,7 +23,7 @@ class Level(IntEnum):
     INFO = 2
     TRACE = 3
 
-log_level: Level = Level.INFO
+log_level: Level = Level.ERROR
 enable_asserts: bool = True # whether assert should stop execution
 
 def __nl__(msg: bytes) -> bytes:

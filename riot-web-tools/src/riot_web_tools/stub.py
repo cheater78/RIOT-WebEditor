@@ -193,11 +193,10 @@ class TermCommandArgParser(CommandArgParser):
         return self.args.baud
 
 class TermCommandHandler(CommandHandler):
-    user_input: str
 
     def __init__(self, arg_parser: CommandArgParser, event_loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(TermCommandArgParser(arg_parser), event_loop)
-        self.user_input = ""
+
 
     def run(self) -> None:
         term_message: MessageCommand = MessageCommand(

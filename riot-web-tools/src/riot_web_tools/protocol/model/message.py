@@ -5,26 +5,23 @@ from riot_web_tools.protocol.model.pkgable_struct import *
 from riot_web_tools.protocol.model.address import Address
 
 class MessageType(StructTag):
-    CONNECT = "connect"
-    CONNECT_ACK = "connect ACK"
-    DISCONNECT = "disconnect"
-
-    REQUEST = "REQ"
-    COMMAND = "CMD"
-    
-    ACK = "ACK"
-    RESET = "RST"
-
-    LOG = "LOG"
-    IO = "IO"
+    CONNECT =       "connect"
+    CONNECT_ACK =   "connect ACK"
+    DISCONNECT =    "disconnect"
+    REQUEST =       "REQ"
+    COMMAND =       "CMD"
+    ACK =           "ACK"
+    RESET =         "RST"
+    LOG =           "LOG"
+    IO =            "IO"
 
 class LogType(Enum):
     ERROR = "error"
-    LOG = "log"
+    LOG =   "log"
 
 class TerminationType(Enum):
-    SUCCESS = "success"
-    ERROR = "error"
+    SUCCESS =   "success"
+    ERROR =     "error"
 
 @smartdataclass
 class Message(PkgableTaggedStruct[MessageType], ABC):

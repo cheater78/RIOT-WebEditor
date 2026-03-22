@@ -124,7 +124,7 @@ class ShellProcess:
 
         # Foreground process group of the PTY
         buf = fcntl.ioctl(
-            self._pty_master.master_fd,
+            self._pty_master.fd,
             termios.TIOCGPGRP,
             struct.pack("i", 0)
         )

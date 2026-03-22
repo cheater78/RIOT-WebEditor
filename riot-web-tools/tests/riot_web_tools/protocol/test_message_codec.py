@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import riot_web_tools.utils.log as log
 from riot_web_tools.protocol.model.message import *
+from riot_web_tools.protocol.model.address import *
 import riot_web_tools.protocol.codec.codec as codec
 
 log.log_level=log.Level.TRACE
@@ -15,52 +16,37 @@ dummy_messages: list[Message] = [
     ),
     MessageConnectAck(),
     MessageDisconnect(),
-    MessageDeviceRequest(
+    MessageRequest(
+        sender=dummy_sender,
+        receiver=dummy_receiver,
+        spawned=True,
+        request=RequestFlash("board_str", "project_path")
+    ),
+    MessageRequest(
+        sender=dummy_sender,
+        receiver=dummy_receiver,
+        spawned=True,
+        request=RequestTerm("board_str", "project_path")
+    ),
+    MessageCommand(
+        sender=dummy_sender,
+        receiver=dummy_receiver,
+        command=CommandFlash("board_str", {0x00: b"empty"}, "args_str")
+    ),
+    MessageCommand(
+        sender=dummy_sender,
+        receiver=dummy_receiver,
+        command=CommandTerm("board_str", 115200)
+    ),
+    MessageACK(
         sender=dummy_sender,
         receiver=dummy_receiver
     ),
-    MessageDeviceRequestAck(
-        sender=dummy_sender,
-        receiver=dummy_receiver
-    ),
-    MessageShellRequest(
-        sender=dummy_sender,
-        receiver=dummy_receiver
-    ),
-    MessageShellRequestAck(
-        sender=dummy_receiver,
-        receiver=dummy_sender
-    ),
-    MessageLinkTermination(
+    MessageReset(
         sender=dummy_sender,
         receiver=dummy_receiver,
         termination_type=TerminationType.ERROR,
-        termination_message="Test log message"
-    ),
-    MessageFlash(
-        sender=dummy_sender,
-        receiver=dummy_receiver,
-        board="esp32-wroom-32",
-        binaries={0x00: b"\xDE\xAD\xBE\xEF"},
-        args="--flash-args"
-    ),
-    MessageFlashRequest(
-        sender=dummy_sender,
-        receiver=dummy_receiver,
-        board="esp32-wroom-32",
-        project_path="/path/to/project"
-    ),
-    MessageTerm(
-        sender=dummy_sender,
-        receiver=dummy_receiver,
-        board="esp32-wroom-32",
-        baud_rate=115200
-    ),
-    MessageTermRequest(
-        sender=dummy_sender,
-        receiver=dummy_receiver,
-        board="esp32-wroom-32",
-        project_path="/path/to/project"
+        termination_message="term msg"
     ),
     MessageLog(
         sender=dummy_sender,
@@ -68,10 +54,10 @@ dummy_messages: list[Message] = [
         log_type=LogType.LOG,
         log_msg="This is a log message"
     ),
-    MessageInput(
+    MessageIO(
         sender=dummy_sender,
         receiver=dummy_receiver,
-        input_msg="User input message"
+        msg=b"User input message"
     )
 ]
 
