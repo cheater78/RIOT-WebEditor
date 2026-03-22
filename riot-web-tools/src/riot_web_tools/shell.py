@@ -148,9 +148,9 @@ class RiotWebShellProxy:
                         self.protocol_socket.write_protocol(MessageReset(req.receiver, req.sender, TerminationType.ERROR, "Unknown Request!"))
                         return
                 self.protocol_socket.write_protocol(MessageACK(req.receiver, req.sender))
-                self.locked_device = req.sender
                 self.shell_process.run_cmd(f"cd {project_path}")
                 self.shell_process.run_cmd(f"make BOARD={board} PORT={req.sender.device_name} {command}")
+                self.locked_device = req.sender
                 return
             case MessageReset() as ltm:
                 if not self.shell_process.is_busy():
