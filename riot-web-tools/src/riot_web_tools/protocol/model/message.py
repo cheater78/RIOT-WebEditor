@@ -15,8 +15,8 @@ class MessageType(StructTag):
     ACK = "ACK"
     RESET = "RST"
 
-    LOG = "log"
-    INPUT = "input"
+    LOG = "LOG"
+    IO = "IO"
 
 class LogType(Enum):
     ERROR = "error"
@@ -115,8 +115,8 @@ class MessageLog(LinkMessage, tag=MessageType.LOG):
     log_msg: str
 
 @smartdataclass
-class MessageInput(LinkMessage, tag=MessageType.INPUT):
-    input_msg: str
+class MessageIO(LinkMessage, tag=MessageType.IO):
+    msg: bytes
 
 __all__ = [
     "MessageType",
@@ -142,5 +142,5 @@ __all__ = [
     "MessageReset",
 
     "MessageLog",
-    "MessageInput",
+    "MessageIO",
 ]

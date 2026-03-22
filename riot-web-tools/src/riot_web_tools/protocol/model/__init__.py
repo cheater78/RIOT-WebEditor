@@ -34,5 +34,5 @@ __all__ = [
     "MessageReset",
 
     "MessageLog",
-    "MessageInput",
+    "MessageIO",
 ]

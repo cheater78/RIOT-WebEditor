@@ -73,6 +73,10 @@ class CommandHandler:
         pass
 
     @abstractmethod
+    def _on_protocol_in_(self, message: Message) -> None:
+        pass
+
+    @abstractmethod
     def _on_tty_windowresize_(self, rows: int, cols: int) -> None:
         pass
     
@@ -94,11 +98,8 @@ class CommandHandler:
                     self._tty_io.error(to_bytes(ltm.termination_message + 
                         ("" if ltm.termination_message.endswith("\n") else "\n")))
                 self._stop_()
-            case MessageLog() as lm:
-                self._tty_io.write(to_bytes(lm.log_msg))
-                return
             case _:
-                log.warn(f"received unexpected Message of type {message}")
+                self._on_protocol_in_(message)
                 return
 
     @staticmethod
@@ -170,6 +171,15 @@ class FlashCommandHandler(CommandHandler):
             if b == TTYActionRaw.CANCEL:
                 self._tty_io.error(b"Flash in progress, cannot be canceled!")
                 break
+    
+    def _on_protocol_in_(self, message: Message) -> None:
+        match message:
+            case MessageLog() as lm:
+                self._tty_io.write(to_bytes(lm.log_msg))
+                return
+            case _:
+                self._tty_io.error(to_bytes(f"Received unexpected Message: {message} (during Flash)"))
+                return
 
 class TermCommandArgParser(CommandArgParser):
 
@@ -215,29 +225,21 @@ class TermCommandHandler(CommandHandler):
         super()._stop_()
 
     def _on_raw_stdin_(self, message: bytes) -> None:
-        human_message: str = ""
+        self._std_protocol_io.write(MessageIO(self._protocol_me, self._device, message))
 
-        def write() -> None:
-            if self.user_input != "":
-                self._std_protocol_io.write(MessageInput(self._protocol_me, self._device, self.user_input))
-                self.user_input = ""
-        
-        for b in message:
-            if chr(b).isprintable():
-                human_message += chr(b)
-                self._tty_io.write(f"{chr(b)}".encode())
-            else:
-                if b == TTYActionRaw.EOF:
-                    write()
-                    self._stop_term_(success=True, message="Term was ended by user input.")
-                elif b == TTYActionRaw.CANCEL:
-                    write()
-                    self._stop_term_(success=False, message="Term was killed by the user.")
-                elif b == TTYActionRaw.RETURN:
-                    write()
+        if bytes(TTYActionRaw.EOF) in message:
+            self._stop_term_(success=True, message="Term was ended by user input.")
+        elif bytes(TTYActionRaw.CANCEL) in message:
+            self._stop_term_(success=False, message="Term was killed by the user.")
+
+    def _on_protocol_in_(self, message: Message) -> None:
+        match message:
+            case MessageIO() as lm:
+                self._tty_io.write(lm.msg)
                 return
-        
-        self.user_input += human_message
+            case _:
+                self._tty_io.error(to_bytes(f"Received unexpected Message: {message} (during Flash)"))
+                return
 
 command_type_to_handler: dict[CommandType, type[CommandHandler]] = {
     CommandType.FLASH: FlashCommandHandler,
