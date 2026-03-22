@@ -239,6 +239,8 @@ ENV XDG_DATA_HOME="${RIOT_WEB_USER_HOME}/.local/share"
 ENV XDG_CONFIG_HOME="${RIOT_WEB_USER_HOME}/.config"
 COPY --chown=$USERID:$GROUPID "./config/code-server-conf.yaml" "${RIOT_WEB_USER_HOME}/.config/code-server/config.yaml"
 COPY --chown=$USERID:$GROUPID "./config/default-vscode-user-settings.json" "${RIOT_WEB_USER_HOME}/.local/share/code-server/User/settings.json"
+ENV RIOT_WEB_CODE_SERVER_DEFAULT_WORKSPACE="${RIOT_WEB_USER_HOME}/.local/share/code-server/User/Workspaces/riot-default.code-workspace"
+COPY --chown=$USERID:$GROUPID "./config/riot-default.code-workspace" "${RIOT_WEB_CODE_SERVER_DEFAULT_WORKSPACE}"
 RUN chown -R $USERNAME:$USERNAME "${RIOT_WEB_USER_HOME}"
 
 # VSCode Extension

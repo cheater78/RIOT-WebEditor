@@ -106,5 +106,5 @@ endif
 
 ifeq (1,$(RIOT_WEB))
   TERMPROG = $(RIOT_WEB_TOOL_STUB)
-  TERMFLAGS = term $(PORT) $(BOARD) $(BAUD)
+  TERMFLAGS = "term" "$(PORT)" "$(BOARD)" "$(BAUD)"
 endif

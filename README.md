@@ -2,11 +2,13 @@
 [RIOT-WebEditor]: https://github.com/cheater78/RIOT-WebEditor
 [coder/code-server]: https://github.com/coder/code-server
 [RIOT-VS-Code-Extension]: https://github.com/Barkolores/RIOT-VS-Code-Extension
+[traefik]: https://github.com/traefik/traefik
+[rnode-flasher]: https://github.com/liamcottle/rnode-flasher
+[esptool-js]: https://github.com/espressif/esptool-js
 
 # [RIOT-OS][RIOT-OS] Web Editor
 Project for the RIOT-OS Web Editor, uses:
-- [coder/code-server][coder/code-server] (VSCode style Editor)
-- [RIOT-OS fork][RIOT-WEB]
+- [coder/code-server][coder/code-server] as VSCode style Editor (MS Monaco)
 - [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension]
 
 ## Install / Deploy
@@ -50,6 +52,7 @@ builds and runs the [RIOT-WebEditor][RIOT-WebEditor] docker image
 - -n: skip [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension] packaging
 - -d: debug/no cache
 
+
 ## Supported Boards (by flasher)
 - esptool:
     - esp32c3-devkit
@@ -91,5 +94,98 @@ builds and runs the [RIOT-WebEditor][RIOT-WebEditor] docker image
 
 ## Design considerations
 
+### Frontend UI
+[coder/code-server][coder/code-server] as VSCode web editor
+- familiarity
+- IDE like
+- remote CLIs
+
+### Architecture
+![architecure](./docs/architecture.png "Architecture")
+
+### Protocol
+All protocol messages and communication sequences are documented [here](./docs/RIOT-Protocol-V-0-0-2.pdf).
+
+### Command trigger by VSCode Extension UI
+- does the cli command for you, but shows it, so you can learn to do it yourself
+- behaves exactly like cli after issuing the command
+
+### Command trigger by CLI
+the user could issue a make flash / term call many different ways:
+```
+make flash              # parsable from stdin
+./flash_my_device.sh    # parsable as file
+
+# in flash_my_dev.py
+os.run("make flash")    # separatly invoked shell or process, no longer parsable
+
+# in a worse flash_my_dev.py
+pid, fd = os.fork()
+if pid == 0:
+    os.exec("/bin/sh")
+else:
+    stdin = os.dup2(fd, 0)
+    os.write(stdin, b"make flash") # executed on a different process, not parsable, not hookable
+```
+that's why we:
+- use a stub (riot-web-tools/stub) which behaves as a flasher or serial tool
+- patch [RIOT-OS][RIOT-OS]' make system to call this stub with necessary arguments for supported boards
+this looks something like:
+```
+# for make flash (hello-world on esp32-wroom-32)
+/usr/bin/riot-web-tools/stub/stub
+    "flash"
+    "Device1"
+    "esp32-wroom-32"
+    "esptool"
+    "{\"0x1000\":\"/home/coder/RIOT/examples/basic/hello-world/bin/esp32-wroom-32/esp_bootloader/bootloader.bin\",\"0x8000\":\"/home/coder/RIOT/examples/basic/hello-world/bin/esp32-wroom-32/partitions.bin\",\"0x10000\":\"/home/coder/RIOT/examples/basic/hello-world/bin/esp32-wroom-32/hello-world.elf.bin\"}"
+    "--chip esp32 --port Device1 --baud 460800 --before default-reset write-flash -z --flash-mode dout --flash-freq 40m --flash-size detect 0x1000 /home/coder/RIOT/examples/basic/hello-world/bin/esp32-wroom-32/esp_bootloader/bootloader.bin 0x8000 /home/coder/RIOT/examples/basic/hello-world/bin/esp32-wroom-32/partitions.bin 0x10000 /home/coder/RIOT/examples/basic/hello-world/bin/esp32-wroom-32/hello-world.elf.bin"
+# for make term (on esp32-wroom-32)
+/usr/bin/riot-web-tools/stub/stub
+    "term"
+    "Device1"
+    "esp32-wroom-32"
+    "115200"
+```
+using the stub and patched RIOT make, any supported call will always result in relaying that command via websocket (requires env RIOT_WEB=1)
+
+### Flashing from the Web
+Supported APIs by browsers:
+- WebSerial
+- WebUSB (unused)
+- WebHID (unused)
+
+flash / serial communication through js implementation:
+- [esptool-js][esptool-js] for esp32, esp8266
+- [rnode-flasher][rnode-flasher] as adafruit-nrfutil for adafruit feather sense
+
+### Websocket for requests, commands and flash payloads
+- one connection between Client and Backend to reduce overhead and used ports
+- a ws relay routing messages between shells and client/devices
+- custom protocol:
+    - avoiding remote code execution
+    - locking devices and shells to running tasks
+    - relaying flash logs and serial communication from device to shell
 
 ## Open issues
+
+### Multi-user centrialized hosting
+Current Architecture:
+- 1x [coder/code-server][coder/code-server]
+- 1x [RIOT-WebEditor][RIOT-WebEditor] docker container
+
+comprises one developement environment (e.g. one per user)
+
+Proposed extension:
+- run multiple [RIOT-WebEditor][RIOT-WebEditor] docker containers in a docker host
+- use [traefik][traefik] (or similar) as reverse proxy, for:
+    - SSL termination
+    - subdomain mapping to docker container (443 -> container_http, 7777 -> container_websocket)
+- a custom web-frontend to create / spin-up / retire [RIOT-WebEditor][RIOT-WebEditor] containers
+
+## General Notes
+- when developing and testing the [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension], dockers caching and vscodes versioning are your greatest enemy
+    - increase the extension version in package.json
+    - increase the RIOT_WEB_VSCODE_EXTENSION_VERSION in the Dockerfile to match that version
+    - then rebuild the image
+- docker.sh is a tool to help with dev/test/deployment, you should adjust it to your workflow
