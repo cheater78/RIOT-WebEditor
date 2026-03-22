@@ -1,14 +1,27 @@
 [RIOT-OS]: https://github.com/RIOT-OS/RIOT
-[RIOT-WEB]: https://github.com/cheater78/RIOT-WEB
 [RIOT-WebEditor]: https://github.com/cheater78/RIOT-WebEditor
 [coder/code-server]: https://github.com/coder/code-server
-[RIOT-WEB-FLASH-EXT-PROTOTYPE]: https://github.com/cheater78/RIOT-WEB-FLASH-EXT-PROTOTYPE
+[RIOT-VS-Code-Extension]: https://github.com/Barkolores/RIOT-VS-Code-Extension
 
 # [RIOT-OS][RIOT-OS] Web Editor
 Project for the RIOT-OS Web Editor, uses:
 - [coder/code-server][coder/code-server] (VSCode style Editor)
 - [RIOT-OS fork][RIOT-WEB]
-- [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
+- [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension]
+
+## Install / Deploy
+### Prerequisites
+- docker
+- [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension] submodule, by either:
+    -  ``` --recurse ``` during clone
+    - or afterwards ``` git submodule update --init ```
+
+### Steps
+as root, run:
+1. ``` chmod +x ./setup.sh && ./setup.sh ```
+2. ``` ./docker.sh -b -s ```
+
+
 ## Config [code-server][coder/code-server]
 The code-server config file is located at [config/code-server.conf.yaml](config/code-server.conf.yaml)
 ### set password hash (argon2)
@@ -19,221 +32,64 @@ sudo apt install argon2
 echo -n "changeme" | argon2 "$(head -c16 /dev/urandom | base64)"
 # Then use the Encoded string
 ```
-The current password set in [code-server.conf.yaml](config/code-server.conf.yaml) is '**changeme**' for demonstration purposes only.
+The current password set in [code-server.conf.yaml](config/code-server.conf.yaml) is **changeme** for demonstration purposes only.
+Leave unset for no password.
 ## Config VSCode
 The default vscode user settings file is located at [config/default-vscode-user-settings.json](config/default-vscode-user-settings.json)
-It implements already some RIOT conventions, as well as DarkMode for your eyes.
 
-## Log
-Project log for what was done, when, why and what went wrong
-### Week 01
-1. Choosing an IDE backend:
-    - "[Monaco](https://github.com/microsoft/monaco-editor)" MS WebEditor (which VSCode is based on)
-        - [MS code-server](https://code.visualstudio.com/docs/remote/vscode-server)
-            - weirdly sanboxed into VSCode/-CLI
-            - not for use as public service
-            - requires github login on client and server
-        - [coder/code-server][coder/code-server] (viable)
-            - this one: easy config, lightweight
-        - openvscodeserver (viable)
-        - [Eclipse Che](https://eclipse.dev/che/) with Monaco or JetBrains UI (convoluted)
-            - [Theia](https://theia-ide.org/): Eclipse Che with AI bloat
-    - others exist but generally not for C development or just not as well known as the VSCode look
-2. Future considerations:
-    - webUSB and webSerial for flashing and comms with chips:
-        - for flash: transfer blob to client?
-    - remote dev env setup:
-        - docker container
-        - [coder/code-server][coder/code-server]
-        - docker port mapping
-    - multi user:
-        - docker container startup, shutdown, access - how?
-### Week 02
-1. WebSerial:
-    - Write Test (to Arduino programmed esp32-wroom, readout through other serial console)
-    - Read Test (from Arduino programmed esp32-wroom, printing to Serial)
-    - Echo Test (esp setup to echo its input, write on Web-Button + async reading loop to web text field)
-2. Docker code-server:
-    - added non root user
-	- fixed perms for home
-	- added config
-	- currently auto setup for esp (esp-idf)
-	- esp-idf vscode web extension?
-		- flasher_args.json is speced inline in RIOT cmd esptool write-flash - could possibly grep args from that
-3. Tested Flash on native ubuntu with RIOT and [esp-idf](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/index.html) to get familiar with the current workflow
-4. Tested the alr existing [esp web extension](https://docs.espressif.com/projects/vscode-esp-idf-extension/en/latest/additionalfeatures/web-extension.html) (a vscode web extension using [esptool.js](https://github.com/espressif/esptool-js))
-    - working serial console, after defining project_description.json with "monitor_baud":"115200"
-### Week 03
-1. esptool dummy:
-    - TODO: pull from pp03
-2. [esptool.js](https://github.com/espressif/esptool-js) flasher prototype on node
-    - build and flasher args export is manual
-    - file input is manual
-    - flash and erase of esp32-wroom works
-3. Noticed porblems:
-    - device identification (is non unique) -> vendor + product ID
-        - those are writable - even worse -> FIX: user selects device from list
-    - WebSerial does not allow device access in non secure (non HTTPS) remote sessions
-        - FIX: HTTPS terminating reverse Proxy, also for multi container management
-### Week 04
-1. [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
-    - prettyfied Serial / Flasher Terminal
-        - use of a WebView for maximum customizability
-    - weird fix for ListView buttons
-        - check for ListItemContext in a List -> offers base for multiple device buttons
-2. Created this repo
-3. Reworked Dockerfile
-    - now uses base Dockerfile [riot/riotbuild:latest](https://github.com/RIOT-OS/riotdocker)
-        - alr contains necessary buildtools
-        - more lightweight compiler setup
-    - created docker.sh (-b for build, -s to start, -d to debug) for quicker setup
-        - image name: riot-dev-env
-        - container name: riot-dev-con
-        - access port: 80 (mapped to code-servers 8080)
-    - clones current [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE] and installs it
-        - also provides tools(npm, vsce) to theoretically reload live(code-server --install-extension /path)
-    - clones current [RIOT-OS][RIOT-WEB] fork
-4. [RIOT-OS][RIOT-WEB] fork
-    - TODO: touch make system without going crazy - alr failed
-    - found smth at: makefiles/tools/esptool.inc.mk (now search usage)
-5. Future considerations:
-    - reverse proxy and docker container management tool: [Treafik](https://github.com/traefik/traefik) (under MIT license)
-    - or look into [coder](https://github.com/coder/coder)
-### Week 05
-1. [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
-    - fixed Serial / Flasher Terminal
-        - WebView broke when moving around(effectively reloading it)
-    - major refactor, abstractions
-        - Device management
-    - multiple failed experiments in regards of terminal hijacking
-2. Build System considerations
-    - make target is upposed to work independently
-        - keep make system as central part
-    - any buttons for a friendlier user expericence just call make
-        - make system then defers its calls when in a web environment
-3. Make system changes ([RIOT-Web][RIOT-WEB] fork)
-    - global env var in Dockerfile: RIOT_WEB_FLASH=1
-    - integration in RIOT/makefiles/tools/programmer.inc.mk
-    - call of export scripts to create ./bin/<board_name>/flasher_args.json
-    - plan to use as signal and cosume flasher_args.json
-4. Architecture Considerations
-    - DeviceList
-        - active project per device -> more common to flash one project to multiple devices
-### Week 06
-1. [RIOT-WEB-FLASH-EXT-PROTOTYPE][RIOT-WEB-FLASH-EXT-PROTOTYPE]
-    - enumerated devices
-    - added info as tree children
-    - baudrate as user input
-    - addictional UI prettification
-2. WebSockets
-    - added commandSocket to extension
-    - requirement for a ws relay to be always available
-        - main extension host (doesnt work) or detached process
-3. ExtensionHost news
-    - Main OR Web Extension host
-    - when main and browser defined in package.json
-        - main always takes precidence over browser
-        - no hybrid extensions
-    - the web extension will only be shipped with the [RIOT-WebEditor][RIOT-WebEditor] project
-        - since using Websockets there is no use for the Web Extension without the backend
-4. Exploring Makefile System integration
-    - already using RIOT/makefiles/tools/programmer.inc.mk
-    - considering USE_PROGRAMMER_WRAPPER_SCRIPT
-        - appears to only add a pretty spinner and a background process
-        - no use for us
-# Week 07
-1. WebSockets
-    - websocketd with looping bash script relay to named pipe
-        - requires separate pipes for rd and wr
-    - websocat bridge to unix socket
-        - better but we also need remote make calls
-    - detached python process -> TODO
-        - websocket for frontend
-        - unix socket for redirected make calls
-        - shell command execution for remote calls
-            - web extensions support vscode.Tasks only -> no dynamic args / fixed package-time-defined commands only
-2. The Merge
-    - first plans with Max for sharing resources and frontend UI code the:
-        - RIOT VSCode Extension
-        - RIOT VSCode Web Extension
-    - Goal: have the same / as similar as possible userexperience on both frontends
-3. Makesystem Integration
-    - remove [RIOT-WEB][RIOT-WEB]
-    - patch a normal [RIOT-OS][RIOT-OS] clone on docker img build
-# Week 08
-1. ShellWrapper
-    - planning ShellWrapper structure
-    - idea:
-        - run a custom ShellWrapper as default Shell
-        - allows to intercept and react to any user shell input
-        - allows for injection of responses from button actions and webclient tasks
-        - websocket as sidechannel to run non typed cmds, display webclient task output, ...
-    - multiple Shells = ShellWrapper can be instantiated
-        - keep one WebSocket
-        - requires ID and routing
-            - WebSocket Server / Router
-            - ShellWrappers that connect to it
-            - ONE single front end that connects
-    - created diegrams for two scenarios:
-        - web ui button press triggert flash / term
-        - shell cmd triggered flash / term
-2. UI concepts
-    - planning of Device UI (as Core Panel)
-    - diagrams for Device UI
-    - built mokups on separate branches
-# Week 09
-1. Backend and Communication
-    - implemented crude WebSocket relay
-        - considers first message per client as their ID (must be number)
-        - forwards all incoming messages to cid=0 -> thought to be the client
-    - implemented ShellProxy
-        - presents an interactive Shell (currently bash)
-        - opens a WebSocket on startup
-        - executes every message sent by WS in the shell, like user input
-        - quick WS write test, frontend can recieve responses from backend ws clients(ShellWrapper)
-2. Frontend
-    - implemented UI according to sketches
-    - removed custom term (big sad)
-    - considering WebTransport(or WebSocketStream) instead of WebSocket
-# Week 10
-1. Protocol design
-# Week 11
-1. Protocol adjustments
-2. Frontend Protocol implementation
-3. Backend Protocol implementation
-# Week 12
-1. Backend Protocol implementation
-2. Architecture rework:
-    - relay.py:
-        - keeps extactly ONE connection to the frontend
-        - routes protocol messages from/to multiple shells to/from the frontend
-        - connection stateful
-            - resets (LTM) unknown peers
-    - terminal.py
-        - provides extended shell access to VSCode Extension frontend
-            - UI triggered make flash, term
-    - web_riot.py
-        - stub to be integrated in place of make backend calls
-        - replaces make targets
-        - constructs and parses protocol messages
-        - comminicates with the frontend via protocol messages
-        - presents frontend command output as its own stdout
-# Week 13
-1. Frontend:
-    - Adafruit Feather Flasher(Rnode)
-    - changed device names
-2. Backend
-    - moved protocol logic to stub.py
-    - reowrked riot-patches:
-        - added serial
-        - adjusted flasher
-    - Dockerfile:
-        - docker base img to debian bookworm (for python libs)
-        - added RIOT dependencies for esp
-        - integrated riot tools (shell, relay, stub) into /usr/bin/riot-tools
-# Week 14
-1. Frontend:
+Current features:
+- RIOT convention: line ruler
+- DarkMode for your eye balls
+- Riot-Web-Shell for interactive Web UX
 
-2. Backend:
-    - reworked shell.py:
-        - interactive shell (raw ttys)
+## docker.sh helper script
+builds and runs the [RIOT-WebEditor][RIOT-WebEditor] docker image
+- -b: build
+- -s: start
+- -u: update [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension]
+- -n: skip [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension] packaging
+- -d: debug/no cache
+
+## Supported Boards (by flasher)
+- esptool:
+    - esp32c3-devkit
+    - esp32c3-wemos-mini
+    - esp32c6-devkit
+    - esp32-ethernet-kit-v1_0
+    - esp32-ethernet-kit-v1_1
+    - esp32-ethernet-kit-v1_2
+    - esp32h2-devkit
+    - esp32-heltec-lora32-v2
+    - esp32-mh-et-live-minikit
+    - esp32-olimex-evb
+    - esp32s2-devkit
+    - esp32s2-lilygo-ttgo-t8
+    - esp32s2-wemos-mini
+    - esp32s3-box
+    - esp32s3-devkit
+    - esp32s3-pros3
+    - esp32s3-usb-otg
+    - esp32s3-wt32-sc01-plus
+    - esp32-ttgo-t-beam
+    - esp32-wemos-d1-r32
+    - esp32-wemos-lolin-d32-pro
+    - esp32-wroom-32
+    - esp32-wrover-kit
+    - esp8266-esp-12x
+    - esp8266-olimex-mod
+    - esp8266-sparkfun-thing
+    - seeedstudio-xiao-esp32c3
+    - seeedstudio-xiao-esp32s3
+- adafruit-nrfutil:
+    - adafruit-clue
+    - adafruit-feather-nrf52840-express
+    - adafruit-feather-nrf52840-sense
+    - adafruit-itsybitsy-nrf52
+    - pro-micro-nrf52840
+    - seeedstudio-xiao-nrf52840-sense
+    - seeedstudio-xiao-nrf52840
+
+## Design considerations
+
+
+## Open issues
