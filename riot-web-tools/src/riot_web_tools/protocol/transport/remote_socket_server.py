@@ -59,6 +59,10 @@ class ProtocolAsyncRemoteSocketServer(AsyncRemoteSocketServerImplementation):
                 if not isinstance(connect_message.peer_id, IDAddress):
                     log.warn("ConnectMessage from non IDAddress!")
                     return
+                # Already connected -> close connection
+                if self.is_established(connect_message.peer_id):
+                    self.write_to(connect_message.peer_id, MessageDisconnect())
+                # (re-) establish connection using new socket
                 self.__establish_connection__(socket_handle, connect_message.peer_id)
                 self.write_to(connect_message.peer_id, MessageConnectAck())
                 log.info(f"AsyncWebSocketServer.__handler__: New Protocol connection from {connect_message.peer_id}")

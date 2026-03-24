@@ -8,10 +8,13 @@ UPDATE=${UPDATE:-false}
 BUILD=${BUILD:-false}
 RUN=${RUN:-false}
 SKIP_NPM=${SKIP_NPM:-false}
+VERBOSE=${VERBOSE:-false}
 
 # Static config
 DOCKER_IMAGE_NAME="riot-dev-env"
 DOCKER_CONTAINER_NAME_BASE="riot-dev-con"
+
+RIOT_VSCODE_EXTENSION_BRANCH="master"
 
 # project root
 PREV_DIR=$(pwd)
@@ -28,16 +31,21 @@ while [[ $# -gt 0 ]]; do
 			RUN=true
 			shift
 			;;
-		-d|--debug)
-			DEBUG=true
-			shift
-			;;
 		-u|--update)
 			UPDATE=true
 			shift
 			;;
 		-n|--no-pkg-build)
 			SKIP_NPM=true
+			shift
+			;;
+		-v|--verbose)
+			VERBOSE=true
+			shift
+			;;
+		-d|--debug)
+			DEBUG=true
+			VERBOSE=true
 			shift
 			;;
 		*)
@@ -48,28 +56,31 @@ while [[ $# -gt 0 ]]; do
 done
 
 run_silent() {
-	if [[ $DEBUG != true ]]; then
+	if [[ $VERBOSE != true ]]; then
 		$@ > /dev/null
 	else
 		$@
 	fi
 }
 
-if [[ $SKIP_NPM == false ]]; then
+if [[ $UPDATE == true ]]; then
 	cd "${PROJECT_DIR}/extensions/RIOT-VS-Code-Extension/extensions/web"
-	if [[ $UPDATE == true ]]; then
-		run_silent git stash
-		run_silent git checkout webDev # TODO: remove for shipping
-		run_silent git pull
-	fi
-	run_silent npm install
-	run_silent npm run compile-web
-	run_silent npm run package
+	run_silent git stash
+	run_silent git checkout $RIOT_VSCODE_EXTENSION_BRANCH
+	run_silent git pull
 	cd "${PROJECT_DIR}"
 fi
 
 if [[ $BUILD == true ]]; then
-	"${PROJECT_DIR}/riot-web-tools/ship.sh"
+	if [[ $SKIP_NPM == false ]]; then
+		cd "${PROJECT_DIR}/extensions/RIOT-VS-Code-Extension/extensions/web"
+		run_silent npm install
+		run_silent npm run compile-web
+		run_silent npm run package
+		cd "${PROJECT_DIR}"
+	fi
+
+	run_silent "${PROJECT_DIR}/riot-web-tools/ship.sh"
 
 	DEBUG_ARG=""
 	if [[ $DEBUG == true ]]; then
@@ -81,11 +92,11 @@ fi
 if [[ $RUN == true ]]; then
 	if [ "$(docker ps -a -q -f name=^/${DOCKER_CONTAINER_NAME_BASE}$)" ]; then
 		echo "Container '${DOCKER_CONTAINER_NAME_BASE}' exists. Removing..."
-		docker rm -f "${DOCKER_CONTAINER_NAME_BASE}"
+		run_silent docker rm -f "${DOCKER_CONTAINER_NAME_BASE}"
 	fi
 
 	echo "Starting Docker Container: riot-dev-con"
-	docker run -d --name $DOCKER_CONTAINER_NAME_BASE -p 80:8080 -p 7777:7777 "${DOCKER_IMAGE_NAME}"
+	run_silent docker run -d --name $DOCKER_CONTAINER_NAME_BASE -p 80:8080 -p 7777:7777 "${DOCKER_IMAGE_NAME}"
 fi
 
 # reset to caller directory

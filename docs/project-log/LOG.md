@@ -212,11 +212,18 @@ Project log for what was done, when, why and what went wrong
     - flashing cannot be canceled during js client flash
         - denied Ctrl+C in Console as well + warning message
         - if Shell is killed prematurely, frontend flash finsihes silently
-    - since device locks on Reqest Command Flash, shell keeps locked_device state to unlock (RESET) device when canceled
-        - implemented crude way of detecting on stdout, seems hit or miss
     - on Client reconnect, a RESET is sent to all shells now, from the relay, requested shells are also purged
         - when the client reconnects (e.g. by page reload) it loses its state, so existing terminals become user terminals
     - reworked MessageLog/Input to Log and IO
         - RIOT term uses raw bytes to emulate stdio over UART, MessageIO now is bidirectional and carries raw bytes
         - term (stub) will be canceled / ended on Ctrl+C / Ctrl + D
-    
+    - Synchronized state for failed builds:
+        - locked_device is set when a Request arrives (device locked itself before)
+        - working_on_locked_device detects when a non stub process, i.e. the make build is running
+        - device is RESET / unlocked when, working_on_locked_device is set, but no process is running anymore
+        - device RESET only happens when locked_device is set, avoids interference with other RESET paths
+    - reworked docker.sh:
+        - added --verbose option to docker.sh
+        - moved npm build into the general build section
+        - silenced ever call that was missing
+        - debug also sets verbose

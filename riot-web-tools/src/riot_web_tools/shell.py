@@ -15,6 +15,7 @@ class RiotWebShellProxy:
 
     user_mode: bool # if true the shell belongs to the user and cant be reclaimed
     locked_device: DeviceAddress | None # marks a device that locked itself because of a request which it sent
+    working_on_locked_device: bool # marks that that a non-stub task (e.g. the make system) is currently working on a locked device
 
     def __init__(self) -> None:
         self.shell_id = self.__retrieve_shell_identifier__()
@@ -49,6 +50,7 @@ class RiotWebShellProxy:
 
         self.user_mode = False
         self.locked_device = None
+        self.working_on_locked_device = False
 
     def __shutdown__(self) -> None:
         # Cleanup
@@ -102,12 +104,22 @@ class RiotWebShellProxy:
         # Forward to STDOUT
         self.tty_io.write(data)
 
-        # NOTE: not great, but works
-        # premise: a failing compile will output to stdout and stop at some point, it will not call flash(stub)
-        #   critical: the (last) propagating stdout takes longer to reach this function, than the front process group to change back to the backend shell (!is_busy)
-        # if self.locked_device is not None and not self.shell_process.is_busy(): 
-        #     self.protocol_socket.write_protocol(MessageReset(self.remote_socket_me, self.locked_device, TerminationType.ERROR, "Process ended!"))
-        #     self.locked_device = None
+        # Detection of a failing build, started from the UI (locks device instantly, never calls stub, make just returns)
+        # NOTE: not great, but works (most of the time .-.)
+        # premise: a failing compile will output to stdout/err and stop at some point, it will not call flash (stub)
+        #   critical assumption: the (last) propagating stdout takes longer to reach this function, than the front process group to change back to the backend shell (!is_busy)
+        # detect that a task is running for a locked device (will not trigger for silenced failing make calls -> won't free the device)
+        if not self.working_on_locked_device and self.locked_device is not None and self.shell_process.is_busy():
+            self.working_on_locked_device = True
+        # detect that a running task stopped
+        if self.working_on_locked_device and not self.shell_process.is_busy():
+            # free(RESET) the device if it is still locked
+            if self.locked_device is not None:
+                self.protocol_socket.write_protocol(
+                    MessageReset(self.remote_socket_me, self.locked_device, TerminationType.ERROR, "Process ended!"))
+                self.locked_device = None
+            # always reset working if not busy
+            self.working_on_locked_device = False
 
     def __on_protocol_shell_output__(self, message: Message) -> None:
         log.info(f"Forwarding ShellProtocol to SocketProtocol: {message}")

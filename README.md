@@ -50,7 +50,8 @@ builds and runs the [RIOT-WebEditor][RIOT-WebEditor] docker image
 - -s: start
 - -u: update [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension]
 - -n: skip [RIOT-VS-Code-Extension][RIOT-VS-Code-Extension] packaging
-- -d: debug/no cache
+- -v: verbose, unsilence calls
+- -d: debug/no cache (includes verbose)
 
 
 ## Supported Boards (by flasher)
