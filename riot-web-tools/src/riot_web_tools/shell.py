@@ -168,10 +168,10 @@ class RiotWebShellProxy:
                 if not self.shell_process.is_busy():
                     log.warn(f"MessageReset received, shell not busy! Dropping message: {link_message}")
                     return
+                self.locked_device = None
                 if not self.shell_process.is_stub_protocol_ready():
                     log.info(f"Received MessageReset on busy Shell, sending CANCEL! {ltm}")
                     self.shell_process.write(bytes(TTYActionRaw.CANCEL))
-                    self.locked_device = None
                     return
                 log.info(f"Forwarding SocketProtocol to ShellProtocol: {link_message}")
                 self.shell_process.write_protocol(link_message)
